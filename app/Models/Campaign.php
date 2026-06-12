@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use App\Models\Quote;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
@@ -15,12 +16,14 @@ class Campaign extends Model
         'internal_cost_per_sms', 'client_rate_per_sms', 'estimated_recipients',
         'actual_recipients', 'sms_segments', 'estimated_cost', 'estimated_charge',
         'estimated_profit', 'actual_cost', 'actual_charge', 'actual_profit',
-        'sender_name', 'scheduled_at', 'sent_at', 'completed_at',
+        'sender_name', 'scheduled_at', 'scheduled_end_at', 'sent_at', 'completed_at',
         'provider_response', 'provider', 'provider_campaign_id', 'admin_override_payment',
+        'is_recurring_schedule',
     ];
 
     protected $casts = [
         'scheduled_at' => 'datetime',
+        'scheduled_end_at' => 'datetime',
         'sent_at' => 'datetime',
         'completed_at' => 'datetime',
         'provider_response' => 'array',
@@ -99,6 +102,21 @@ class Campaign extends Model
     {
         return in_array($this->status, ['ready_to_schedule', 'scheduled'])
             || $this->admin_override_payment;
+    }
+
+    public function canBePaused(): bool
+    {
+        return in_array($this->status, ['sending', 'scheduled']);
+    }
+
+    public function canBeResumed(): bool
+    {
+        return $this->status === 'paused';
+    }
+
+    public function quotes()
+    {
+        return $this->hasMany(Quote::class);
     }
 
     public function recalculateEstimates(): void

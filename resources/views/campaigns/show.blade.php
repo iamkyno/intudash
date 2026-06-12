@@ -4,8 +4,8 @@
 
 @section('content')
 @php
-$badgeMap = ['draft'=>'badge-neutral','recipients_uploaded'=>'badge-info','invoice_generated'=>'badge-info','awaiting_payment'=>'badge-warning','ready_to_schedule'=>'badge-success','scheduled'=>'badge-brand','sending'=>'badge-info','completed'=>'badge-success','partially_completed'=>'badge-warning','failed'=>'badge-danger','cancelled'=>'badge-neutral'];
-$labelMap = ['draft'=>'Draft','recipients_uploaded'=>'Recipients Uploaded','invoice_generated'=>'Invoice Generated','awaiting_payment'=>'Awaiting Payment','ready_to_schedule'=>'Ready to Schedule','scheduled'=>'Scheduled','sending'=>'Sending','completed'=>'Completed','partially_completed'=>'Partial','failed'=>'Failed','cancelled'=>'Cancelled'];
+$badgeMap = ['draft'=>'badge-neutral','recipients_uploaded'=>'badge-info','invoice_generated'=>'badge-info','awaiting_payment'=>'badge-warning','ready_to_schedule'=>'badge-success','scheduled'=>'badge-brand','sending'=>'badge-info','completed'=>'badge-success','partially_completed'=>'badge-warning','failed'=>'badge-danger','cancelled'=>'badge-neutral','paused'=>'badge-warning'];
+$labelMap = ['draft'=>'Draft','recipients_uploaded'=>'Recipients Uploaded','invoice_generated'=>'Invoice Generated','awaiting_payment'=>'Awaiting Payment','ready_to_schedule'=>'Ready to Schedule','scheduled'=>'Scheduled','sending'=>'Sending','completed'=>'Completed','partially_completed'=>'Partial','failed'=>'Failed','cancelled'=>'Cancelled','paused'=>'Paused'];
 @endphp
 
 <div class="page-header">
@@ -43,12 +43,12 @@ $labelMap = ['draft'=>'Draft','recipients_uploaded'=>'Recipients Uploaded','invo
                 <span class="badge badge-neutral">{{ $campaign->sms_segments }} segment{{ $campaign->sms_segments > 1 ? 's' : '' }}</span>
             </div>
             <div class="card-body">
-                <div style="background:rgba(244,240,237,0.03);border:1px solid var(--color-border);border-radius:6px;padding:14px 16px;font-size:14px;line-height:1.6;color:var(--color-mist);">
+                <div style="background:#F7F6F4;border:1px solid var(--surface-border);border-radius:6px;padding:14px 16px;font-size:14px;line-height:1.6;color:var(--text-primary);">
                     {{ $campaign->message }}
                 </div>
                 @if($campaign->notes)
                     <hr class="divider">
-                    <p style="font-size:13px;color:var(--color-mist-secondary);margin:0;">{{ $campaign->notes }}</p>
+                    <p style="font-size:13px;color:var(--text-secondary);margin:0;">{{ $campaign->notes }}</p>
                 @endif
             </div>
         </div>
@@ -58,7 +58,7 @@ $labelMap = ['draft'=>'Draft','recipients_uploaded'=>'Recipients Uploaded','invo
         <div class="card">
             <div class="card-header">
                 <span class="card-header-title"><i class="bi bi-bar-chart"></i> Delivery</span>
-                <span style="font-size:12px;color:var(--color-mist-tertiary);">{{ $deliveryStats['total'] }} messages</span>
+                <span style="font-size:12px;color:var(--text-tertiary);">{{ $deliveryStats['total'] }} messages</span>
             </div>
             <div class="card-body">
                 <div class="row g-3 mb-4">
@@ -73,9 +73,9 @@ $labelMap = ['draft'=>'Draft','recipients_uploaded'=>'Recipients Uploaded','invo
                         'failed'      => ['danger',  'Failed'],
                     ] as $key => [$color, $label])
                     <div class="col-6 col-md-3">
-                        <div style="text-align:center;padding:14px 8px;background:rgba(244,240,237,0.02);border:1px solid var(--color-border);border-radius:6px;">
+                        <div style="text-align:center;padding:14px 8px;background:#F7F6F4;border:1px solid var(--surface-border);border-radius:6px;">
                             <div style="font-size:22px;font-weight:600;color:var(--color-{{ $color }});">{{ $deliveryStats[$key] }}</div>
-                            <div style="font-size:11px;color:var(--color-mist-tertiary);margin-top:3px;">{{ $label }}</div>
+                            <div style="font-size:11px;color:var(--text-tertiary);margin-top:3px;">{{ $label }}</div>
                         </div>
                     </div>
                     @endforeach
@@ -84,7 +84,7 @@ $labelMap = ['draft'=>'Draft','recipients_uploaded'=>'Recipients Uploaded','invo
                 <div class="row g-3">
                     <div class="col-md-6">
                         <div class="d-flex justify-content-between mb-1" style="font-size:12px;">
-                            <span style="color:var(--color-mist-secondary);">Delivery rate</span>
+                            <span style="color:var(--text-secondary);">Delivery rate</span>
                             <span style="color:var(--color-success);font-weight:600;">{{ $deliveryStats['delivery_pct'] }}%</span>
                         </div>
                         <div class="progress" style="height:5px;">
@@ -93,7 +93,7 @@ $labelMap = ['draft'=>'Draft','recipients_uploaded'=>'Recipients Uploaded','invo
                     </div>
                     <div class="col-md-6">
                         <div class="d-flex justify-content-between mb-1" style="font-size:12px;">
-                            <span style="color:var(--color-mist-secondary);">Failure rate</span>
+                            <span style="color:var(--text-secondary);">Failure rate</span>
                             <span style="color:var(--color-danger);font-weight:600;">{{ $deliveryStats['failure_pct'] }}%</span>
                         </div>
                         <div class="progress" style="height:5px;">
@@ -126,18 +126,18 @@ $labelMap = ['draft'=>'Draft','recipients_uploaded'=>'Recipients Uploaded','invo
                 @endphp
                 @foreach($rows as [$label, $val])
                 <div class="d-flex justify-content-between mb-2" style="font-size:13px;">
-                    <span style="color:var(--color-mist-secondary);">{{ $label }}</span>
-                    <span style="color:var(--color-mist);">{{ $val }}</span>
+                    <span style="color:var(--text-secondary);">{{ $label }}</span>
+                    <span style="color:var(--text-primary);">{{ $val }}</span>
                 </div>
                 @endforeach
                 <hr class="divider">
                 <div class="d-flex justify-content-between" style="font-size:14px;font-weight:600;">
-                    <span style="color:var(--color-mist-secondary);">Est. Profit</span>
+                    <span style="color:var(--text-secondary);">Est. Profit</span>
                     <span style="color:var(--color-success);">R {{ number_format($campaign->estimated_profit, 2) }}</span>
                 </div>
                 @if($campaign->actual_charge > 0)
                     <div class="d-flex justify-content-between mt-2" style="font-size:14px;font-weight:600;">
-                        <span style="color:var(--color-mist-secondary);">Actual Profit</span>
+                        <span style="color:var(--text-secondary);">Actual Profit</span>
                         <span style="color:var(--color-success);">R {{ number_format($campaign->actual_profit, 2) }}</span>
                     </div>
                 @endif
@@ -164,6 +164,21 @@ $labelMap = ['draft'=>'Draft','recipients_uploaded'=>'Recipients Uploaded','invo
                             <i class="bi bi-receipt"></i> Generate Invoice
                         </button>
                     </form>
+                    <form action="{{ route('quotes.generate', $campaign) }}" method="POST">
+                        @csrf
+                        <button type="submit" class="btn btn-ghost btn-sm w-100">
+                            <i class="bi bi-file-earmark-text"></i> Generate Quote
+                        </button>
+                    </form>
+                @endif
+
+                @if($campaign->quotes->count() > 0)
+                    @foreach($campaign->quotes as $qt)
+                        <a href="{{ route('quotes.show', $qt) }}" class="btn btn-ghost btn-sm">
+                            <i class="bi bi-file-earmark-text"></i> {{ $qt->quote_number }}
+                            <span class="badge {{ ['draft'=>'badge-neutral','sent'=>'badge-info','accepted'=>'badge-success','declined'=>'badge-danger','expired'=>'badge-neutral'][$qt->status] ?? 'badge-neutral' }} ms-auto">{{ ucfirst($qt->status) }}</span>
+                        </a>
+                    @endforeach
                 @endif
 
                 @if($campaign->status === 'invoice_generated')
@@ -179,6 +194,33 @@ $labelMap = ['draft'=>'Draft','recipients_uploaded'=>'Recipients Uploaded','invo
                     <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#scheduleModal">
                         <i class="bi bi-calendar-check"></i> Schedule / Send
                     </button>
+                @endif
+
+                @if($campaign->canBePaused())
+                    <form action="{{ route('campaigns.pause', $campaign) }}" method="POST">
+                        @csrf
+                        <button type="submit" class="btn btn-ghost btn-sm w-100">
+                            <i class="bi bi-pause-circle"></i> Pause Campaign
+                        </button>
+                    </form>
+                @endif
+
+                @if($campaign->canBeResumed())
+                    <form action="{{ route('campaigns.resume', $campaign) }}" method="POST">
+                        @csrf
+                        <button type="submit" class="btn btn-primary btn-sm w-100">
+                            <i class="bi bi-play-circle"></i> Resume Campaign
+                        </button>
+                    </form>
+                @endif
+
+                @if(in_array($campaign->status, ['sending', 'paused', 'scheduled']))
+                    <form action="{{ route('campaigns.cancel', $campaign) }}" method="POST">
+                        @csrf
+                        <button type="submit" class="btn btn-danger-ghost btn-sm w-100" onclick="return confirm('Stop and cancel this campaign?')">
+                            <i class="bi bi-stop-circle"></i> Stop Campaign
+                        </button>
+                    </form>
                 @endif
 
                 @if(in_array($campaign->status, ['completed','partially_completed','sending']))
@@ -199,19 +241,35 @@ $labelMap = ['draft'=>'Draft','recipients_uploaded'=>'Recipients Uploaded','invo
             </div>
             <div class="card-body">
                 <div class="d-flex justify-content-between" style="font-size:13px;">
-                    <span style="color:var(--color-mist-secondary);">Provider</span>
+                    <span style="color:var(--text-secondary);">Provider</span>
                     <span class="badge badge-neutral text-uppercase">{{ $campaign->provider }}</span>
                 </div>
                 @if(config('services.smsportal.test_mode'))
                     <div class="d-flex justify-content-between mt-2" style="font-size:13px;">
-                        <span style="color:var(--color-mist-secondary);">Mode</span>
+                        <span style="color:var(--text-secondary);">Mode</span>
                         <span class="badge badge-warning">Test</span>
                     </div>
                 @endif
                 @if($campaign->provider_campaign_id)
                     <div class="d-flex justify-content-between mt-2" style="font-size:13px;">
-                        <span style="color:var(--color-mist-secondary);">Event ID</span>
+                        <span style="color:var(--text-secondary);">Event ID</span>
                         <code>{{ $campaign->provider_campaign_id }}</code>
+                    </div>
+                @endif
+                @if($campaign->scheduled_at)
+                    <div class="d-flex justify-content-between mt-2" style="font-size:13px;">
+                        <span style="color:var(--text-secondary);">Scheduled At</span>
+                        <span style="color:var(--text-primary);">{{ $campaign->scheduled_at->format('d M Y H:i') }}</span>
+                    </div>
+                @endif
+                @if($campaign->scheduled_end_at)
+                    <div class="d-flex justify-content-between mt-2" style="font-size:13px;">
+                        <span style="color:var(--text-secondary);">Ends At</span>
+                        <span style="color:var(--text-primary);">{{ $campaign->scheduled_end_at->format('d M Y H:i') }}</span>
+                    </div>
+                    <div class="d-flex justify-content-between mt-2" style="font-size:13px;">
+                        <span style="color:var(--text-secondary);">Recurring</span>
+                        <span class="badge badge-info">Daily batches</span>
                     </div>
                 @endif
             </div>
@@ -233,26 +291,29 @@ $labelMap = ['draft'=>'Draft','recipients_uploaded'=>'Recipients Uploaded','invo
                     <div class="mb-4">
                         <label class="form-label mb-3">Send option</label>
                         <div style="display:flex;flex-direction:column;gap:10px;">
-                            <label style="display:flex;align-items:flex-start;gap:10px;padding:12px 14px;border:1px solid var(--color-border);border-radius:6px;cursor:pointer;" id="opt-immediate">
+                            <label style="display:flex;align-items:flex-start;gap:10px;padding:12px 14px;border:1px solid var(--surface-border);border-radius:6px;cursor:pointer;" id="opt-immediate">
                                 <input type="radio" name="send_type" value="immediate" checked style="margin-top:2px;">
                                 <div>
-                                    <div style="font-size:13px;font-weight:500;color:var(--color-mist);">Send Immediately</div>
-                                    <div style="font-size:12px;color:var(--color-mist-tertiary);">Starts sending right now via the queue</div>
+                                    <div style="font-size:13px;font-weight:500;color:var(--text-primary);">Send Immediately</div>
+                                    <div style="font-size:12px;color:var(--text-tertiary);">Starts sending right now via the queue</div>
                                 </div>
                             </label>
-                            <label style="display:flex;align-items:flex-start;gap:10px;padding:12px 14px;border:1px solid var(--color-border);border-radius:6px;cursor:pointer;" id="opt-scheduled">
+                            <label style="display:flex;align-items:flex-start;gap:10px;padding:12px 14px;border:1px solid var(--surface-border);border-radius:6px;cursor:pointer;" id="opt-scheduled">
                                 <input type="radio" name="send_type" value="scheduled" style="margin-top:2px;" id="radioScheduled">
                                 <div>
-                                    <div style="font-size:13px;font-weight:500;color:var(--color-mist);">Schedule for Later</div>
-                                    <div style="font-size:12px;color:var(--color-mist-tertiary);">Pick a date and time (SAST)</div>
+                                    <div style="font-size:13px;font-weight:500;color:var(--text-primary);">Schedule for Later</div>
+                                    <div style="font-size:12px;color:var(--text-tertiary);">Pick a date and time (SAST)</div>
                                 </div>
                             </label>
                         </div>
                     </div>
                     <div id="scheduleFields" class="d-none">
-                        <label class="form-label">Date &amp; Time</label>
-                        <input type="datetime-local" name="scheduled_at" class="form-control"
+                        <label class="form-label">Start Date &amp; Time</label>
+                        <input type="datetime-local" name="scheduled_at" id="scheduledAt" class="form-control mb-3"
                             min="{{ now()->addMinutes(5)->format('Y-m-d\TH:i') }}">
+                        <label class="form-label">End Date &amp; Time <span style="font-size:11px;color:var(--text-tertiary);">(optional — enables recurring schedule)</span></label>
+                        <input type="datetime-local" name="scheduled_end_at" id="scheduledEndAt" class="form-control"
+                            min="{{ now()->addMinutes(10)->format('Y-m-d\TH:i') }}">
                     </div>
                 </div>
                 <div class="modal-footer">

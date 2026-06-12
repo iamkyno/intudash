@@ -24,7 +24,7 @@
             <div class="col-md-3">
                 <select name="status" class="form-select form-select-sm">
                     <option value="">All statuses</option>
-                    @foreach(['draft','recipients_uploaded','invoice_generated','awaiting_payment','ready_to_schedule','scheduled','sending','completed','partially_completed','failed','cancelled'] as $s)
+                    @foreach(['draft','recipients_uploaded','invoice_generated','awaiting_payment','ready_to_schedule','scheduled','sending','paused','completed','partially_completed','failed','cancelled'] as $s)
                         <option value="{{ $s }}" {{ request('status') === $s ? 'selected' : '' }}>
                             {{ ucwords(str_replace('_', ' ', $s)) }}
                         </option>
@@ -63,8 +63,8 @@
             <tbody>
                 @forelse($campaigns as $campaign)
                 @php
-                $badgeMap = ['draft'=>'badge-neutral','recipients_uploaded'=>'badge-info','invoice_generated'=>'badge-info','awaiting_payment'=>'badge-warning','ready_to_schedule'=>'badge-success','scheduled'=>'badge-brand','sending'=>'badge-info','completed'=>'badge-success','partially_completed'=>'badge-warning','failed'=>'badge-danger','cancelled'=>'badge-neutral'];
-                $labelMap = ['draft'=>'Draft','recipients_uploaded'=>'Recipients Uploaded','invoice_generated'=>'Invoice Generated','awaiting_payment'=>'Awaiting Payment','ready_to_schedule'=>'Ready to Schedule','scheduled'=>'Scheduled','sending'=>'Sending','completed'=>'Completed','partially_completed'=>'Partial','failed'=>'Failed','cancelled'=>'Cancelled'];
+                $badgeMap = ['draft'=>'badge-neutral','recipients_uploaded'=>'badge-info','invoice_generated'=>'badge-info','awaiting_payment'=>'badge-warning','ready_to_schedule'=>'badge-success','scheduled'=>'badge-brand','sending'=>'badge-info','completed'=>'badge-success','partially_completed'=>'badge-warning','failed'=>'badge-danger','cancelled'=>'badge-neutral','paused'=>'badge-warning'];
+                $labelMap = ['draft'=>'Draft','recipients_uploaded'=>'Recipients Uploaded','invoice_generated'=>'Invoice Generated','awaiting_payment'=>'Awaiting Payment','ready_to_schedule'=>'Ready to Schedule','scheduled'=>'Scheduled','sending'=>'Sending','completed'=>'Completed','partially_completed'=>'Partial','failed'=>'Failed','cancelled'=>'Cancelled','paused'=>'Paused'];
                 @endphp
                 <tr>
                     <td>
@@ -82,7 +82,16 @@
                     <td style="font-size:13px;color:var(--color-mist);">
                         R {{ number_format($campaign->actual_charge ?: $campaign->estimated_charge, 2) }}
                     </td>
-                    <td class="table-muted">{{ $campaign->scheduled_at?->format('d M H:i') ?? '—' }}</td>
+                    <td class="table-muted">
+                        @if($campaign->scheduled_at)
+                            {{ $campaign->scheduled_at->format('d M H:i') }}
+                            @if($campaign->scheduled_end_at)
+                                <span style="color:var(--color-mist-tertiary);"> – {{ $campaign->scheduled_end_at->format('d M H:i') }}</span>
+                            @endif
+                        @else
+                            —
+                        @endif
+                    </td>
                     <td>
                         <div class="d-flex gap-1">
                             <a href="{{ route('campaigns.show', $campaign) }}" class="btn btn-ghost btn-sm btn-icon"><i class="bi bi-eye"></i></a>

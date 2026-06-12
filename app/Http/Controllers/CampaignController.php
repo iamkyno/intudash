@@ -65,7 +65,7 @@ class CampaignController extends Controller
 
     public function show(Campaign $campaign)
     {
-        $campaign->load(['client', 'invoices', 'recipients']);
+        $campaign->load(['client', 'invoices', 'quotes', 'recipients']);
 
         $deliveryStats = [
             'total' => $campaign->smsLogs()->count(),
@@ -135,8 +135,9 @@ class CampaignController extends Controller
         abort_if(!$campaign->canBeScheduled(), 403, 'Campaign is not ready to schedule.');
 
         $validated = $request->validate([
-            'send_type' => 'required|in:immediate,scheduled',
-            'scheduled_at' => 'required_if:send_type,scheduled|nullable|date|after:now',
+            'send_type'        => 'required|in:immediate,scheduled',
+            'scheduled_at'     => 'required_if:send_type,scheduled|nullable|date|after:now',
+            'scheduled_end_at' => 'nullable|date|after:scheduled_at',
         ]);
 
         if ($validated['send_type'] === 'immediate') {
@@ -146,9 +147,12 @@ class CampaignController extends Controller
                 ->with('success', 'Campaign is being sent now.');
         }
 
+        $hasRange = !empty($validated['scheduled_end_at']);
         $campaign->update([
-            'status' => 'scheduled',
-            'scheduled_at' => $validated['scheduled_at'],
+            'status'               => 'scheduled',
+            'scheduled_at'         => $validated['scheduled_at'],
+            'scheduled_end_at'     => $hasRange ? $validated['scheduled_end_at'] : null,
+            'is_recurring_schedule'=> $hasRange,
         ]);
 
         return redirect()->route('campaigns.show', $campaign)
@@ -157,9 +161,24 @@ class CampaignController extends Controller
 
     public function cancel(Campaign $campaign)
     {
-        abort_if(in_array($campaign->status, ['sending', 'completed']), 403);
+        abort_if(in_array($campaign->status, ['completed']), 403);
         $campaign->update(['status' => 'cancelled']);
-        return redirect()->route('campaigns.show', $campaign)->with('success', 'Campaign cancelled.');
+        return redirect()->route('campaigns.show', $campaign)->with('success', 'Campaign stopped.');
+    }
+
+    public function pause(Campaign $campaign)
+    {
+        abort_if(!$campaign->canBePaused(), 403, 'Campaign cannot be paused.');
+        $campaign->update(['status' => 'paused']);
+        return redirect()->route('campaigns.show', $campaign)->with('success', 'Campaign paused.');
+    }
+
+    public function resume(Campaign $campaign)
+    {
+        abort_if(!$campaign->canBeResumed(), 403, 'Campaign cannot be resumed.');
+        $campaign->update(['status' => 'sending']);
+        SendCampaignJob::dispatch($campaign);
+        return redirect()->route('campaigns.show', $campaign)->with('success', 'Campaign resumed.');
     }
 
     public function report(Campaign $campaign)

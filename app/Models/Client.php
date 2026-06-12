@@ -34,6 +34,11 @@ class Client extends Model
         return $this->hasMany(Invoice::class);
     }
 
+    public function quotes()
+    {
+        return $this->hasMany(Quote::class);
+    }
+
     public function smsLogs()
     {
         return $this->hasMany(SmsLog::class);

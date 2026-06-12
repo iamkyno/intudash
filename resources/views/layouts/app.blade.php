@@ -590,6 +590,9 @@
         </a>
 
         <div class="nav-section-label">Billing</div>
+        <a href="{{ route('quotes.index') }}" class="sidebar-link {{ request()->routeIs('quotes.*') ? 'active' : '' }}">
+            <i class="bi bi-file-earmark-text"></i> Quotes
+        </a>
         <a href="{{ route('invoices.index') }}" class="sidebar-link {{ request()->routeIs('invoices.*') ? 'active' : '' }}">
             <i class="bi bi-receipt"></i> Invoices
         </a>
