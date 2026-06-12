@@ -25,7 +25,7 @@
                     <td><a href="{{ route('invoices.show', $invoice) }}" class="table-link">{{ $invoice->invoice_number }}</a></td>
                     <td>{{ $invoice->client->company_name }}</td>
                     <td class="table-muted">{{ $invoice->campaign?->name ?? '—' }}</td>
-                    <td style="font-size:13px;font-weight:600;color:var(--color-mist);">R {{ number_format($invoice->total, 2) }}</td>
+                    <td style="font-size:13px;font-weight:600;color:var(--text-primary);">R {{ number_format($invoice->total, 2) }}</td>
                     <td><span class="badge {{ $badgeMap[$invoice->status] ?? 'badge-neutral' }} badge-dot">{{ ucfirst($invoice->status) }}</span></td>
                     <td class="table-muted">{{ $invoice->created_at->format('d M Y') }}</td>
                     <td>
@@ -37,7 +37,7 @@
                 </tr>
                 @empty
                 <tr>
-                    <td colspan="7" style="text-align:center;padding:40px;color:var(--color-mist-tertiary);">No invoices yet.</td>
+                    <td colspan="7" style="text-align:center;padding:40px;color:var(--text-tertiary);">No invoices yet.</td>
                 </tr>
                 @endforelse
             </tbody>

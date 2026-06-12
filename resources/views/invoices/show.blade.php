@@ -255,13 +255,13 @@
                     ['VAT ('.$invoice->vat_rate.'%)', $invoice->vat_enabled ? 'R '.number_format($invoice->vat_amount, 2) : 'Excluded'],
                 ] as [$label, $val])
                 <div class="d-flex justify-content-between mb-2" style="font-size:13px;">
-                    <span style="color:var(--color-mist-secondary);">{{ $label }}</span>
-                    <span style="color:var(--color-mist);">{{ $val }}</span>
+                    <span style="color:var(--text-secondary);">{{ $label }}</span>
+                    <span style="color:var(--text-primary);">{{ $val }}</span>
                 </div>
                 @endforeach
                 <hr class="divider">
                 <div class="d-flex justify-content-between" style="font-size:15px;font-weight:600;">
-                    <span style="color:var(--color-mist-secondary);">Total</span>
+                    <span style="color:var(--text-secondary);">Total</span>
                     <span style="color:var(--color-brand);">R {{ number_format($invoice->total, 2) }}</span>
                 </div>
             </div>

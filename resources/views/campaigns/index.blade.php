@@ -76,17 +76,17 @@
                             {{ $labelMap[$campaign->status] ?? $campaign->status }}
                         </span>
                     </td>
-                    <td style="font-size:13px;color:var(--color-mist);">
+                    <td style="font-size:13px;color:var(--text-primary);">
                         {{ number_format($campaign->actual_recipients ?: $campaign->estimated_recipients) }}
                     </td>
-                    <td style="font-size:13px;color:var(--color-mist);">
+                    <td style="font-size:13px;color:var(--text-primary);">
                         R {{ number_format($campaign->actual_charge ?: $campaign->estimated_charge, 2) }}
                     </td>
                     <td class="table-muted">
                         @if($campaign->scheduled_at)
                             {{ $campaign->scheduled_at->format('d M H:i') }}
                             @if($campaign->scheduled_end_at)
-                                <span style="color:var(--color-mist-tertiary);"> – {{ $campaign->scheduled_end_at->format('d M H:i') }}</span>
+                                <span style="color:var(--text-tertiary);"> – {{ $campaign->scheduled_end_at->format('d M H:i') }}</span>
                             @endif
                         @else
                             —
@@ -103,7 +103,7 @@
                 </tr>
                 @empty
                 <tr>
-                    <td colspan="7" style="text-align:center;padding:40px;color:var(--color-mist-tertiary);">
+                    <td colspan="7" style="text-align:center;padding:40px;color:var(--text-tertiary);">
                         No campaigns found. <a href="{{ route('campaigns.create') }}" class="text-brand">Create your first</a>
                     </td>
                 </tr>
