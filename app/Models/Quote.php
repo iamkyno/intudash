@@ -12,8 +12,9 @@ class Quote extends Model
 
     protected $fillable = [
         'client_id', 'campaign_id', 'invoice_id', 'quote_number', 'status',
-        'sms_quantity', 'sms_rate', 'subtotal', 'vat_enabled',
-        'vat_rate', 'vat_amount', 'total', 'notes', 'valid_until', 'accepted_at',
+        'sms_quantity', 'sms_rate', 'email_quantity', 'email_rate',
+        'subtotal', 'vat_enabled', 'vat_rate', 'vat_amount', 'total',
+        'notes', 'valid_until', 'accepted_at',
     ];
 
     protected $casts = [

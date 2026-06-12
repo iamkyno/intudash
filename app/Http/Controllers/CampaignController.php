@@ -42,21 +42,35 @@ class CampaignController extends Controller
 
     public function store(Request $request)
     {
+        $type = $request->input('campaign_type', 'sms');
         $validated = $request->validate([
-            'client_id' => 'required|exists:clients,id',
-            'name' => 'required|string|max:255',
-            'message' => 'required|string',
-            'notes' => 'nullable|string',
-            'internal_cost_per_sms' => 'required|numeric|min:0',
-            'client_rate_per_sms' => 'required|numeric|min:0',
-            'estimated_recipients' => 'nullable|integer|min:0',
-            'sender_name' => 'nullable|string|max:11',
-            'repeat_enabled' => 'nullable|boolean',
-            'repeat_count' => 'nullable|integer|min:2|max:52',
+            'client_id'                  => 'required|exists:clients,id',
+            'name'                       => 'required|string|max:255',
+            'campaign_type'              => 'required|in:sms,email,both',
+            'message'                    => 'required_if:campaign_type,sms|required_if:campaign_type,both|nullable|string',
+            'email_subject'              => 'required_if:campaign_type,email|required_if:campaign_type,both|nullable|string|max:255',
+            'email_from_name'            => 'nullable|string|max:255',
+            'email_from_address'         => 'nullable|email|max:255',
+            'email_reply_to'             => 'nullable|email|max:255',
+            'email_body'                 => 'required_if:campaign_type,email|required_if:campaign_type,both|nullable|string',
+            'notes'                      => 'nullable|string',
+            'internal_cost_per_sms'      => 'nullable|numeric|min:0',
+            'client_rate_per_sms'        => 'nullable|numeric|min:0',
+            'estimated_recipients'       => 'nullable|integer|min:0',
+            'sender_name'                => 'nullable|string|max:11',
+            'internal_cost_per_email'    => 'nullable|numeric|min:0',
+            'client_rate_per_email'      => 'nullable|numeric|min:0',
+            'estimated_email_recipients' => 'nullable|integer|min:0',
+            'repeat_enabled'             => 'nullable|boolean',
+            'repeat_count'               => 'nullable|integer|min:2|max:52',
         ]);
 
-        $smsCount = SmsCounter::count($validated['message']);
-        $validated['sms_segments'] = $smsCount['segments'];
+        if (in_array($type, ['sms', 'both']) && !empty($validated['message'])) {
+            $smsCount = SmsCounter::count($validated['message']);
+            $validated['sms_segments'] = $smsCount['segments'];
+        } else {
+            $validated['sms_segments'] = 1;
+        }
         $validated['user_id'] = auth()->id();
 
         $repeatCount = ($validated['repeat_enabled'] ?? false) ? (int) ($validated['repeat_count'] ?? 2) : 1;
@@ -123,19 +137,32 @@ class CampaignController extends Controller
     {
         abort_if(!in_array($campaign->status, ['draft']), 403);
 
+        $type = $request->input('campaign_type', 'sms');
         $validated = $request->validate([
-            'client_id' => 'required|exists:clients,id',
-            'name' => 'required|string|max:255',
-            'message' => 'required|string',
-            'notes' => 'nullable|string',
-            'internal_cost_per_sms' => 'required|numeric|min:0',
-            'client_rate_per_sms' => 'required|numeric|min:0',
-            'estimated_recipients' => 'nullable|integer|min:0',
-            'sender_name' => 'nullable|string|max:11',
+            'client_id'                  => 'required|exists:clients,id',
+            'name'                       => 'required|string|max:255',
+            'campaign_type'              => 'required|in:sms,email,both',
+            'message'                    => 'required_if:campaign_type,sms|required_if:campaign_type,both|nullable|string',
+            'email_subject'              => 'required_if:campaign_type,email|required_if:campaign_type,both|nullable|string|max:255',
+            'email_from_name'            => 'nullable|string|max:255',
+            'email_from_address'         => 'nullable|email|max:255',
+            'email_reply_to'             => 'nullable|email|max:255',
+            'email_body'                 => 'required_if:campaign_type,email|required_if:campaign_type,both|nullable|string',
+            'notes'                      => 'nullable|string',
+            'internal_cost_per_sms'      => 'nullable|numeric|min:0',
+            'client_rate_per_sms'        => 'nullable|numeric|min:0',
+            'estimated_recipients'       => 'nullable|integer|min:0',
+            'sender_name'                => 'nullable|string|max:11',
+            'internal_cost_per_email'    => 'nullable|numeric|min:0',
+            'client_rate_per_email'      => 'nullable|numeric|min:0',
+            'estimated_email_recipients' => 'nullable|integer|min:0',
         ]);
 
-        $smsCount = SmsCounter::count($validated['message']);
-        $validated['sms_segments'] = $smsCount['segments'];
+        if (in_array($type, ['sms', 'both']) && !empty($validated['message'])) {
+            $validated['sms_segments'] = SmsCounter::count($validated['message'])['segments'];
+        } else {
+            $validated['sms_segments'] = 1;
+        }
 
         $old = $campaign->toArray();
         $campaign->update($validated);

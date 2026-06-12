@@ -30,6 +30,13 @@ class SettingsController extends Controller
             'smsportal_api_secret' => 'nullable|string',
             'smsportal_test_mode' => 'boolean',
             'default_sender_name' => 'nullable|string|max:11',
+            'aws_key' => 'nullable|string',
+            'aws_secret' => 'nullable|string',
+            'aws_region' => 'nullable|string',
+            'ses_from_email' => 'nullable|email',
+            'ses_from_name' => 'nullable|string',
+            'internal_cost_per_email' => 'nullable|numeric|min:0',
+            'default_client_rate_per_email' => 'nullable|numeric|min:0',
         ]);
 
         foreach ($validated as $key => $value) {

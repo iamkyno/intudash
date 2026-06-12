@@ -100,6 +100,60 @@
             </div>
 
             <div class="card mb-3">
+                <div class="card-header"><i class="bi bi-envelope-at me-2"></i>Amazon SES (Email) Settings</div>
+                <div class="card-body">
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label">AWS Access Key</label>
+                            <input type="text" name="aws_key" class="form-control"
+                                value="{{ $settings['aws_key'] ?? '' }}" placeholder="AKIA…">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">AWS Secret Key</label>
+                            <input type="password" name="aws_secret" class="form-control"
+                                value="{{ $settings['aws_secret'] ?? '' }}" placeholder="Enter to update">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">AWS Region</label>
+                            <select name="aws_region" class="form-select">
+                                @foreach(['us-east-1','us-west-2','eu-west-1','eu-central-1','ap-southeast-1','ap-southeast-2','sa-east-1'] as $r)
+                                    <option value="{{ $r }}" {{ ($settings['aws_region'] ?? 'us-east-1') === $r ? 'selected' : '' }}>{{ $r }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Default From Email</label>
+                            <input type="email" name="ses_from_email" class="form-control"
+                                value="{{ $settings['ses_from_email'] ?? '' }}" placeholder="noreply@yourdomain.com">
+                            <small class="text-muted">Must be verified in SES</small>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Default From Name</label>
+                            <input type="text" name="ses_from_name" class="form-control"
+                                value="{{ $settings['ses_from_name'] ?? '' }}" placeholder="Company Name">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Internal Cost per Email (R)</label>
+                            <div class="input-group">
+                                <span class="input-group-text">R</span>
+                                <input type="number" name="internal_cost_per_email" step="0.000001" min="0" class="form-control"
+                                    value="{{ $settings['internal_cost_per_email'] ?? '0.000100' }}">
+                            </div>
+                            <small class="text-muted">AWS SES charges ~$0.10 per 1,000 emails. Update this to reflect your ZAR equivalent.</small>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Default Client Rate per Email (R)</label>
+                            <div class="input-group">
+                                <span class="input-group-text">R</span>
+                                <input type="number" name="default_client_rate_per_email" step="0.000001" min="0" class="form-control"
+                                    value="{{ $settings['default_client_rate_per_email'] ?? '0.000300' }}">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card mb-3">
                 <div class="card-header"><i class="bi bi-phone me-2"></i>SMSPortal API Settings</div>
                 <div class="card-body">
                     <div class="row g-3">

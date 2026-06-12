@@ -86,7 +86,11 @@
                     <div class="q-label">Campaign</div>
                     <div class="q-company">{{ $quote->campaign?->name ?? '—' }}</div>
                     @if($quote->campaign)
-                        <p class="q-detail">{{ $quote->campaign->sms_segments }} SMS segment{{ $quote->campaign->sms_segments > 1 ? 's' : '' }} per recipient</p>
+                        @php $ct = $quote->campaign->campaign_type ?? 'sms'; @endphp
+                        <p class="q-detail">Type: {{ ['sms'=>'SMS','email'=>'Email','both'=>'SMS + Email'][$ct] ?? strtoupper($ct) }}</p>
+                        @if(in_array($ct, ['sms','both']))
+                            <p class="q-detail">{{ $quote->campaign->sms_segments }} SMS segment{{ $quote->campaign->sms_segments > 1 ? 's' : '' }} per recipient</p>
+                        @endif
                     @endif
                 </div>
             </div>
@@ -225,12 +229,20 @@
                 <span class="card-header-title"><i class="bi bi-calculator"></i> Summary</span>
             </div>
             <div class="card-body">
-                @foreach([
-                    ['SMS Quantity', number_format($quote->sms_quantity)],
-                    ['Rate / SMS', 'R '.number_format($quote->sms_rate, 4)],
-                    ['Subtotal', 'R '.number_format($quote->subtotal, 2)],
-                    ['VAT ('.$quote->vat_rate.'%)', $quote->vat_enabled ? 'R '.number_format($quote->vat_amount, 2) : 'Excluded'],
-                ] as [$label, $val])
+                @php
+                $summaryRows = [];
+                if ($quote->sms_quantity > 0) {
+                    $summaryRows[] = ['SMS Quantity', number_format($quote->sms_quantity)];
+                    $summaryRows[] = ['Rate / SMS', 'R '.number_format($quote->sms_rate, 6)];
+                }
+                if ($quote->email_quantity > 0) {
+                    $summaryRows[] = ['Email Quantity', number_format($quote->email_quantity)];
+                    $summaryRows[] = ['Rate / Email', 'R '.number_format($quote->email_rate, 6)];
+                }
+                $summaryRows[] = ['Subtotal', 'R '.number_format($quote->subtotal, 2)];
+                $summaryRows[] = ['VAT ('.$quote->vat_rate.'%)', $quote->vat_enabled ? 'R '.number_format($quote->vat_amount, 2) : 'Excluded'];
+                @endphp
+                @foreach($summaryRows as [$label, $val])
                 <div class="d-flex justify-content-between mb-2" style="font-size:13px;">
                     <span style="color:var(--text-secondary);">{{ $label }}</span>
                     <span style="color:var(--text-primary);">{{ $val }}</span>

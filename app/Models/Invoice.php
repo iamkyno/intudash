@@ -12,8 +12,9 @@ class Invoice extends Model
 
     protected $fillable = [
         'client_id', 'campaign_id', 'invoice_number', 'status',
-        'sms_quantity', 'sms_rate', 'subtotal', 'vat_enabled',
-        'vat_rate', 'vat_amount', 'total', 'notes', 'due_date', 'paid_at',
+        'sms_quantity', 'sms_rate', 'email_quantity', 'email_rate',
+        'subtotal', 'vat_enabled', 'vat_rate', 'vat_amount', 'total',
+        'notes', 'due_date', 'paid_at',
     ];
 
     protected $casts = [

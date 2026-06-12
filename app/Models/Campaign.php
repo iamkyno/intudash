@@ -12,13 +12,16 @@ class Campaign extends Model
     use HasFactory, SoftDeletes;
 
     protected $fillable = [
-        'client_id', 'user_id', 'name', 'message', 'notes', 'status',
+        'client_id', 'user_id', 'name', 'campaign_type', 'message', 'notes', 'status',
         'internal_cost_per_sms', 'client_rate_per_sms', 'estimated_recipients',
         'actual_recipients', 'sms_segments', 'estimated_cost', 'estimated_charge',
         'estimated_profit', 'actual_cost', 'actual_charge', 'actual_profit',
         'sender_name', 'scheduled_at', 'scheduled_end_at', 'sent_at', 'completed_at',
         'provider_response', 'provider', 'provider_campaign_id', 'admin_override_payment',
         'is_recurring_schedule', 'archived_at', 'campaign_group_id', 'campaign_group_run',
+        'email_subject', 'email_from_name', 'email_from_address', 'email_reply_to', 'email_body',
+        'internal_cost_per_email', 'client_rate_per_email',
+        'estimated_email_recipients', 'actual_email_recipients',
     ];
 
     protected $casts = [

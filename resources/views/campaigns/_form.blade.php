@@ -1,3 +1,5 @@
+@php $ctype = old('campaign_type', $campaign->campaign_type ?? 'sms'); @endphp
+
 <div class="row g-3">
     <div class="col-md-6">
         <label class="form-label">Campaign Name <span class="text-danger">*</span></label>
@@ -19,38 +21,125 @@
         </select>
         @error('client_id')<div class="invalid-feedback">{{ $message }}</div>@enderror
     </div>
+
+    {{-- Campaign type --}}
     <div class="col-12">
-        <label class="form-label">Message Body <span class="text-danger">*</span></label>
-        <textarea name="message" id="message" class="form-control @error('message') is-invalid @enderror"
-            rows="5" required placeholder="Type your SMS message here...">{{ old('message', $campaign->message ?? '') }}</textarea>
-        @error('message')<div class="invalid-feedback">{{ $message }}</div>@enderror
-    </div>
-    <div class="col-md-4">
-        <label class="form-label">Sender Name <small class="text-muted">(max 11 chars)</small></label>
-        <input type="text" name="sender_name" class="form-control" maxlength="11"
-            value="{{ old('sender_name', $campaign->sender_name ?? '') }}">
-    </div>
-    <div class="col-md-4">
-        <label class="form-label">Internal Cost per SMS (R)</label>
-        <div class="input-group">
-            <span class="input-group-text">R</span>
-            <input type="number" name="internal_cost_per_sms" id="internal_cost_per_sms" step="0.0001" min="0"
-                class="form-control" value="{{ old('internal_cost_per_sms', $campaign->internal_cost_per_sms ?? '0.1200') }}">
+        <label class="form-label">Campaign Type <span class="text-danger">*</span></label>
+        <div class="d-flex gap-3">
+            @foreach(['sms' => '<i class="bi bi-chat-dots"></i> SMS', 'email' => '<i class="bi bi-envelope"></i> Email', 'both' => '<i class="bi bi-layers"></i> Both'] as $val => $label)
+            <div class="form-check">
+                <input class="form-check-input" type="radio" name="campaign_type" id="type_{{ $val }}"
+                    value="{{ $val }}" {{ $ctype === $val ? 'checked' : '' }} onchange="updateTypeVisibility()">
+                <label class="form-check-label" for="type_{{ $val }}">{!! $label !!}</label>
+            </div>
+            @endforeach
         </div>
     </div>
-    <div class="col-md-4">
-        <label class="form-label">Client Rate per SMS (R)</label>
-        <div class="input-group">
-            <span class="input-group-text">R</span>
-            <input type="number" name="client_rate_per_sms" id="client_rate_per_sms" step="0.0001" min="0"
-                class="form-control" value="{{ old('client_rate_per_sms', $campaign->client_rate_per_sms ?? '0.2500') }}">
+
+    {{-- SMS fields --}}
+    <div id="sms-fields" class="col-12">
+        <div class="row g-3">
+            <div class="col-12">
+                <label class="form-label">SMS Message <span class="text-danger sms-required">*</span></label>
+                <textarea name="message" id="message" class="form-control @error('message') is-invalid @enderror"
+                    rows="5" placeholder="Type your SMS message here...">{{ old('message', $campaign->message ?? '') }}</textarea>
+                @error('message')<div class="invalid-feedback">{{ $message }}</div>@enderror
+            </div>
+            <div class="col-md-4">
+                <label class="form-label">Sender Name <small class="text-muted">(max 11 chars)</small></label>
+                <input type="text" name="sender_name" class="form-control" maxlength="11"
+                    value="{{ old('sender_name', $campaign->sender_name ?? '') }}">
+            </div>
+            <div class="col-md-4">
+                <label class="form-label">Internal Cost per SMS (R)</label>
+                <div class="input-group">
+                    <span class="input-group-text">R</span>
+                    <input type="number" name="internal_cost_per_sms" id="internal_cost_per_sms" step="0.0001" min="0"
+                        class="form-control" value="{{ old('internal_cost_per_sms', $campaign->internal_cost_per_sms ?? '0.1200') }}">
+                </div>
+            </div>
+            <div class="col-md-4">
+                <label class="form-label">Client Rate per SMS (R)</label>
+                <div class="input-group">
+                    <span class="input-group-text">R</span>
+                    <input type="number" name="client_rate_per_sms" id="client_rate_per_sms" step="0.0001" min="0"
+                        class="form-control" value="{{ old('client_rate_per_sms', $campaign->client_rate_per_sms ?? '0.2500') }}">
+                </div>
+            </div>
+            <div class="col-md-4">
+                <label class="form-label">Estimated SMS Recipients</label>
+                <input type="number" name="estimated_recipients" id="estimated_recipients" min="0"
+                    class="form-control" value="{{ old('estimated_recipients', $campaign->estimated_recipients ?? '0') }}">
+            </div>
         </div>
     </div>
-    <div class="col-md-4">
-        <label class="form-label">Estimated Recipients</label>
-        <input type="number" name="estimated_recipients" id="estimated_recipients" min="0"
-            class="form-control" value="{{ old('estimated_recipients', $campaign->estimated_recipients ?? '0') }}">
+
+    {{-- Email fields --}}
+    <div id="email-fields" class="col-12" style="display:none;">
+        <div class="row g-3">
+            <div class="col-12">
+                <div style="background:var(--surface-bg);border:1px solid var(--surface-border);border-radius:8px;padding:16px;">
+                    <p class="small fw-semibold mb-3" style="color:var(--text-secondary);"><i class="bi bi-envelope me-1"></i>Email Settings (Amazon SES)</p>
+                    <div class="row g-3">
+                        <div class="col-12">
+                            <label class="form-label">Email Subject <span class="text-danger email-required">*</span></label>
+                            <input type="text" name="email_subject" class="form-control"
+                                value="{{ old('email_subject', $campaign->email_subject ?? '') }}"
+                                placeholder="e.g. Exclusive offer for you">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">From Name</label>
+                            <input type="text" name="email_from_name" class="form-control"
+                                value="{{ old('email_from_name', $campaign->email_from_name ?? '') }}"
+                                placeholder="e.g. Acme Marketing">
+                            <small class="text-muted">Leave blank to use settings default</small>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">From Address (alias)</label>
+                            <input type="email" name="email_from_address" class="form-control"
+                                value="{{ old('email_from_address', $campaign->email_from_address ?? '') }}"
+                                placeholder="e.g. promos@yourdomain.com">
+                            <small class="text-muted">Must be verified in SES</small>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Reply-To</label>
+                            <input type="email" name="email_reply_to" class="form-control"
+                                value="{{ old('email_reply_to', $campaign->email_reply_to ?? '') }}"
+                                placeholder="e.g. support@yourdomain.com">
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label">Email Body (HTML) <span class="text-danger email-required">*</span></label>
+                            <textarea name="email_body" id="email_body" class="form-control" rows="8"
+                                placeholder="HTML email body. Use {{name}} to personalise.">{{ old('email_body', $campaign->email_body ?? '') }}</textarea>
+                            <small class="text-muted">Supports HTML. Use <code>{{name}}</code> and <code>{{email}}</code> for personalisation.</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <label class="form-label">Internal Cost per Email (R)</label>
+                <div class="input-group">
+                    <span class="input-group-text">R</span>
+                    <input type="number" name="internal_cost_per_email" id="internal_cost_per_email" step="0.000001" min="0"
+                        class="form-control" value="{{ old('internal_cost_per_email', $campaign->internal_cost_per_email ?? \App\Services\EmailService::getCostPerEmail()) }}">
+                </div>
+            </div>
+            <div class="col-md-4">
+                <label class="form-label">Client Rate per Email (R)</label>
+                <div class="input-group">
+                    <span class="input-group-text">R</span>
+                    <input type="number" name="client_rate_per_email" id="client_rate_per_email" step="0.000001" min="0"
+                        class="form-control" value="{{ old('client_rate_per_email', $campaign->client_rate_per_email ?? \App\Services\EmailService::getClientRatePerEmail()) }}">
+                </div>
+            </div>
+            <div class="col-md-4">
+                <label class="form-label">Estimated Email Recipients</label>
+                <input type="number" name="estimated_email_recipients" id="estimated_email_recipients" min="0"
+                    class="form-control" value="{{ old('estimated_email_recipients', $campaign->estimated_email_recipients ?? '0') }}">
+            </div>
+        </div>
     </div>
+
     <div class="col-12">
         <label class="form-label">Campaign Notes</label>
         <textarea name="notes" class="form-control" rows="2">{{ old('notes', $campaign->notes ?? '') }}</textarea>
@@ -92,6 +181,21 @@ function toggleRepeat(checkbox) {
     document.getElementById('repeatSection').style.display = checkbox.checked ? '' : 'none';
 }
 
+function updateTypeVisibility() {
+    const type = document.querySelector('input[name="campaign_type"]:checked')?.value || 'sms';
+    const showSms   = type === 'sms'   || type === 'both';
+    const showEmail = type === 'email' || type === 'both';
+
+    document.getElementById('sms-fields').style.display   = showSms   ? '' : 'none';
+    document.getElementById('email-fields').style.display = showEmail ? '' : 'none';
+
+    // Toggle required attributes
+    const msgEl = document.getElementById('message');
+    if (msgEl) msgEl.required = showSms;
+
+    if (typeof updateEstimator === 'function') updateEstimator();
+}
+
 document.querySelector('select[name="client_id"]')?.addEventListener('change', function() {
     const opt = this.options[this.selectedIndex];
     const rate = opt.dataset.rate;
@@ -99,8 +203,8 @@ document.querySelector('select[name="client_id"]')?.addEventListener('change', f
     if (typeof updateEstimator === 'function') updateEstimator();
 });
 
-// Trigger rate population on page load if client is pre-selected
 document.addEventListener('DOMContentLoaded', function() {
+    updateTypeVisibility();
     const clientSelect = document.querySelector('select[name="client_id"]');
     if (clientSelect && clientSelect.value) {
         clientSelect.dispatchEvent(new Event('change'));
