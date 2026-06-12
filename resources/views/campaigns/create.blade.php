@@ -112,6 +112,14 @@
 <script>
 const EXTENDED = ['^','{','}','\\','[','~',']','|','€'];
 
+function formatMoney(val) {
+    if (val === 0) return '0.00';
+    // Show enough decimals so small per-unit rates (email) are visible
+    if (val < 0.01) return val.toFixed(6);
+    if (val < 1)    return val.toFixed(4);
+    return val.toFixed(2);
+}
+
 function countSms(msg) {
     let len = 0, hasExtended = false;
     for (const ch of msg) {
@@ -184,8 +192,8 @@ function updateEstimator() {
         document.getElementById('est-recipients').textContent  = recipients.toLocaleString();
         document.getElementById('est-segments').textContent    = segments;
         document.getElementById('est-total-sms').textContent   = totalSms.toLocaleString();
-        document.getElementById('est-cost').textContent        = 'R ' + smsCost.toFixed(2);
-        document.getElementById('est-charge').textContent      = 'R ' + smsCharge.toFixed(2);
+        document.getElementById('est-cost').textContent        = 'R ' + formatMoney(smsCost);
+        document.getElementById('est-charge').textContent      = 'R ' + formatMoney(smsCharge);
     }
 
     // Email calculations
@@ -201,19 +209,22 @@ function updateEstimator() {
 
         document.getElementById('est-email-recipients').textContent = emailRecipients.toLocaleString();
         document.getElementById('est-total-emails').textContent     = totalEmails.toLocaleString();
-        document.getElementById('est-email-cost').textContent       = 'R ' + emailCost.toFixed(2);
-        document.getElementById('est-email-charge').textContent     = 'R ' + emailCharge.toFixed(2);
+        document.getElementById('est-email-cost').textContent       = 'R ' + formatMoney(emailCost);
+        document.getElementById('est-email-charge').textContent     = 'R ' + formatMoney(emailCharge);
     }
 
     const profit = totalCharge - totalCost;
     const profitEl = document.getElementById('est-profit');
-    profitEl.textContent = 'R ' + profit.toFixed(2);
+    profitEl.textContent = 'R ' + formatMoney(profit);
     profitEl.className = profit >= 0 ? 'text-success' : 'text-danger';
 }
 
-['message','estimated_recipients','internal_cost_per_sms','client_rate_per_sms',
- 'estimated_email_recipients','internal_cost_per_email','client_rate_per_email'].forEach(id => {
-    document.getElementById(id)?.addEventListener('input', updateEstimator);
+const ESTIMATOR_FIELDS = new Set([
+    'message','estimated_recipients','internal_cost_per_sms','client_rate_per_sms',
+    'estimated_email_recipients','internal_cost_per_email','client_rate_per_email',
+]);
+document.addEventListener('input', e => {
+    if (ESTIMATOR_FIELDS.has(e.target.id || e.target.name)) updateEstimator();
 });
 document.querySelectorAll('input[name="campaign_type"]').forEach(r => r.addEventListener('change', updateEstimator));
 document.getElementById('repeatToggle')?.addEventListener('change', updateEstimator);
