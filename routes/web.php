@@ -33,6 +33,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::resource('clients', ClientController::class);
 
     // Campaigns
+    Route::get('campaigns/archived', [CampaignController::class, 'archived'])->name('campaigns.archived');
+    Route::post('campaigns/{campaign}/archive', [CampaignController::class, 'archive'])->name('campaigns.archive');
+    Route::post('campaigns/{campaign}/restore-archive', [CampaignController::class, 'restoreArchive'])->name('campaigns.restore-archive');
     Route::resource('campaigns', CampaignController::class);
     Route::post('campaigns/{campaign}/schedule', [CampaignController::class, 'schedule'])->name('campaigns.schedule');
     Route::post('campaigns/{campaign}/cancel', [CampaignController::class, 'cancel'])->name('campaigns.cancel');
@@ -57,6 +60,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('invoices/{invoice}/pdf', [InvoiceController::class, 'pdf'])->name('invoices.pdf');
 
     // Quotes
+    Route::get('/quotes/create', [QuoteController::class, 'create'])->name('quotes.create');
+    Route::post('/quotes', [QuoteController::class, 'store'])->name('quotes.store');
     Route::get('/quotes', [QuoteController::class, 'index'])->name('quotes.index');
     Route::get('/quotes/{quote}', [QuoteController::class, 'show'])->name('quotes.show');
     Route::post('/campaigns/{campaign}/generate-quote', [QuoteController::class, 'generate'])->name('quotes.generate');

@@ -8,6 +8,9 @@
         <h1>Quotes</h1>
         <p>{{ $quotes->total() }} total</p>
     </div>
+    <a href="{{ route('quotes.create') }}" class="btn btn-primary btn-sm">
+        <i class="bi bi-plus-circle"></i> New Quote
+    </a>
 </div>
 
 <div class="card">

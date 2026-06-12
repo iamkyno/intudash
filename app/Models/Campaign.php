@@ -18,7 +18,7 @@ class Campaign extends Model
         'estimated_profit', 'actual_cost', 'actual_charge', 'actual_profit',
         'sender_name', 'scheduled_at', 'scheduled_end_at', 'sent_at', 'completed_at',
         'provider_response', 'provider', 'provider_campaign_id', 'admin_override_payment',
-        'is_recurring_schedule',
+        'is_recurring_schedule', 'archived_at',
     ];
 
     protected $casts = [
@@ -30,11 +30,12 @@ class Campaign extends Model
         'admin_override_payment' => 'boolean',
         'internal_cost_per_sms' => 'decimal:4',
         'client_rate_per_sms' => 'decimal:4',
+        'archived_at' => 'datetime',
     ];
 
     public function client()
     {
-        return $this->belongsTo(Client::class);
+        return $this->belongsTo(Client::class)->withTrashed();
     }
 
     public function user()
@@ -117,6 +118,21 @@ class Campaign extends Model
     public function quotes()
     {
         return $this->hasMany(Quote::class);
+    }
+
+    public function isArchived(): bool
+    {
+        return $this->archived_at !== null;
+    }
+
+    public function scopeNotArchived($query)
+    {
+        return $query->whereNull('archived_at');
+    }
+
+    public function scopeArchived($query)
+    {
+        return $query->whereNotNull('archived_at');
     }
 
     public function recalculateEstimates(): void

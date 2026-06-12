@@ -57,7 +57,11 @@ class ClientController extends Controller
             'total_profit' => $client->campaigns()->sum('actual_profit'),
         ];
 
-        return view('clients.show', compact('client', 'stats'));
+        $activeCampaignCount = $client->campaigns()
+            ->whereNotIn('status', ['cancelled', 'completed', 'failed'])
+            ->count();
+
+        return view('clients.show', compact('client', 'stats', 'activeCampaignCount'));
     }
 
     public function edit(Client $client)
@@ -87,8 +91,17 @@ class ClientController extends Controller
             ->with('success', 'Client updated successfully.');
     }
 
-    public function destroy(Client $client)
+    public function destroy(Request $request, Client $client)
     {
+        $force = $request->boolean('force');
+        $activeCampaigns = $client->campaigns()
+            ->whereNotIn('status', ['cancelled', 'completed', 'failed'])
+            ->count();
+
+        if ($activeCampaigns > 0 && !$force) {
+            return back()->with('error', "Cannot delete: this client has {$activeCampaigns} active campaign(s). Archive or cancel them first, or force delete.");
+        }
+
         AuditLogService::log('client_deleted', $client);
         $client->delete();
 

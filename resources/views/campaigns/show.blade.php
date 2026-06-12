@@ -164,6 +164,12 @@ $labelMap = ['draft'=>'Draft','recipients_uploaded'=>'Recipients Uploaded','invo
                             <i class="bi bi-receipt"></i> Generate Invoice
                         </button>
                     </form>
+                @endif
+
+                @if(
+                    ($campaign->status === 'recipients_uploaded' && $campaign->validRecipients()->count() > 0)
+                    || ($campaign->status === 'draft' && $campaign->estimated_recipients > 0)
+                )
                     <form action="{{ route('quotes.generate', $campaign) }}" method="POST">
                         @csrf
                         <button type="submit" class="btn btn-ghost btn-sm w-100">

@@ -13,7 +13,7 @@ class CampaignController extends Controller
 {
     public function index(Request $request)
     {
-        $query = Campaign::with('client')->latest();
+        $query = Campaign::with(['client' => fn($q) => $q->withTrashed()])->notArchived()->latest();
 
         if ($request->status) {
             $query->where('status', $request->status);
@@ -123,11 +123,31 @@ class CampaignController extends Controller
 
     public function destroy(Campaign $campaign)
     {
-        abort_if(!in_array($campaign->status, ['draft', 'cancelled']), 403);
+        abort_if($campaign->status !== 'draft', 403, 'Only draft campaigns can be deleted.');
         AuditLogService::log('campaign_deleted', $campaign);
         $campaign->delete();
 
         return redirect()->route('campaigns.index')->with('success', 'Campaign deleted.');
+    }
+
+    public function archived()
+    {
+        $campaigns = Campaign::with(['client' => fn($q) => $q->withTrashed()])
+            ->archived()->latest()->paginate(20);
+        return view('campaigns.archived', compact('campaigns'));
+    }
+
+    public function archive(Campaign $campaign)
+    {
+        abort_if(!in_array($campaign->status, ['completed', 'partially_completed', 'cancelled', 'failed']), 403, 'Only finished campaigns can be archived.');
+        $campaign->update(['archived_at' => now()]);
+        return redirect()->route('campaigns.index')->with('success', 'Campaign archived.');
+    }
+
+    public function restoreArchive(Campaign $campaign)
+    {
+        $campaign->update(['archived_at' => null]);
+        return redirect()->route('campaigns.archived')->with('success', 'Campaign restored.');
     }
 
     public function schedule(Request $request, Campaign $campaign)

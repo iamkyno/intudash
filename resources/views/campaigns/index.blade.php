@@ -8,9 +8,14 @@
         <h1>Campaigns</h1>
         <p>{{ $campaigns->total() }} total</p>
     </div>
-    <a href="{{ route('campaigns.create') }}" class="btn btn-primary btn-sm">
-        <i class="bi bi-plus-circle"></i> New Campaign
-    </a>
+    <div class="d-flex gap-2">
+        <a href="{{ route('campaigns.archived') }}" class="btn btn-ghost btn-sm">
+            <i class="bi bi-archive"></i> Archives
+        </a>
+        <a href="{{ route('campaigns.create') }}" class="btn btn-primary btn-sm">
+            <i class="bi bi-plus-circle"></i> New Campaign
+        </a>
+    </div>
 </div>
 
 {{-- Filters --}}
@@ -70,7 +75,14 @@
                     <td>
                         <a href="{{ route('campaigns.show', $campaign) }}" class="table-link">{{ $campaign->name }}</a>
                     </td>
-                    <td class="table-muted">{{ $campaign->client->company_name }}</td>
+                    <td class="table-muted">
+                        @if($campaign->client->deleted_at)
+                            <span style="color:var(--text-tertiary);text-decoration:line-through;">{{ $campaign->client->company_name }}</span>
+                            <span class="badge badge-neutral ms-1">Deleted</span>
+                        @else
+                            {{ $campaign->client->company_name }}
+                        @endif
+                    </td>
                     <td>
                         <span class="badge {{ $badgeMap[$campaign->status] ?? 'badge-neutral' }} badge-dot">
                             {{ $labelMap[$campaign->status] ?? $campaign->status }}

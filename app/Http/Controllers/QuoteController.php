@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Campaign;
+use App\Models\Client;
 use App\Models\Quote;
 use App\Services\QuoteService;
 use Barryvdh\DomPDF\Facade\Pdf;
@@ -11,6 +12,26 @@ use Illuminate\Http\Request;
 class QuoteController extends Controller
 {
     public function __construct(private QuoteService $quoteService) {}
+
+    public function create()
+    {
+        $clients = Client::where('status', 'active')->get();
+        $campaigns = Campaign::with('client')
+            ->whereIn('status', ['draft', 'recipients_uploaded'])
+            ->whereRaw('estimated_recipients > 0 OR id IN (SELECT campaign_id FROM recipients WHERE status = "valid")')
+            ->latest()->get();
+        return view('quotes.create', compact('clients', 'campaigns'));
+    }
+
+    public function store(Request $request)
+    {
+        $validated = $request->validate([
+            'campaign_id' => 'required|exists:campaigns,id',
+        ]);
+        $campaign = Campaign::findOrFail($validated['campaign_id']);
+        $quote = $this->quoteService->generateFromCampaign($campaign);
+        return redirect()->route('quotes.show', $quote)->with('success', 'Quote created.');
+    }
 
     public function index()
     {
@@ -29,7 +50,12 @@ class QuoteController extends Controller
 
     public function generate(Campaign $campaign)
     {
-        abort_if(!in_array($campaign->status, ['recipients_uploaded', 'invoice_generated', 'awaiting_payment', 'ready_to_schedule', 'draft']), 403, 'Campaign is not ready for a quote.');
+        abort_if(
+            !in_array($campaign->status, ['draft','recipients_uploaded','invoice_generated','awaiting_payment','ready_to_schedule'])
+            || ($campaign->status === 'draft' && $campaign->estimated_recipients <= 0),
+            403,
+            'Campaign needs estimated recipients to generate a quote.'
+        );
 
         $quote = $this->quoteService->generateFromCampaign($campaign);
 

@@ -39,10 +39,28 @@
         <div class="card">
             <div class="card-header d-flex justify-content-between align-items-center">
                 Client Info
-                <div>
+                <div class="d-flex gap-1">
                     <a href="{{ route('clients.edit', $client) }}" class="btn btn-sm btn-outline-secondary">
                         <i class="bi bi-pencil"></i>
                     </a>
+                    <form action="{{ route('clients.destroy', $client) }}" method="POST"
+                        onsubmit="return confirm('Delete this client? This cannot be undone.')">
+                        @csrf @method('DELETE')
+                        <input type="hidden" name="force" value="0">
+                        <button type="submit" class="btn btn-sm btn-outline-danger">
+                            <i class="bi bi-trash"></i>
+                        </button>
+                    </form>
+                    @if($activeCampaignCount > 0)
+                    <form action="{{ route('clients.destroy', $client) }}" method="POST"
+                        onsubmit="return confirm('Force delete this client including {{ $activeCampaignCount }} active campaign(s)? This cannot be undone.')">
+                        @csrf @method('DELETE')
+                        <input type="hidden" name="force" value="1">
+                        <button type="submit" class="btn btn-sm btn-danger">
+                            <i class="bi bi-trash-fill"></i> Force Delete
+                        </button>
+                    </form>
+                    @endif
                 </div>
             </div>
             <div class="card-body">
