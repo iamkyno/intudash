@@ -110,8 +110,8 @@
                         <div class="col-12">
                             <label class="form-label">Email Body (HTML) <span class="text-danger email-required">*</span></label>
                             <textarea name="email_body" id="email_body" class="form-control" rows="8"
-                                placeholder="HTML email body. Use {{name}} to personalise.">{{ old('email_body', $campaign->email_body ?? '') }}</textarea>
-                            <small class="text-muted">Supports HTML. Use <code>{{name}}</code> and <code>{{email}}</code> for personalisation.</small>
+                                placeholder="HTML email body. Use @{{name}} to personalise.">{{ old('email_body', $campaign->email_body ?? '') }}</textarea>
+                            <small class="text-muted">Supports HTML. Use <code>@{{name}}</code> and <code>@{{email}}</code> for personalisation.</small>
                         </div>
                     </div>
                 </div>
