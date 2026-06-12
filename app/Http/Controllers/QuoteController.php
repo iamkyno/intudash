@@ -29,7 +29,8 @@ class QuoteController extends Controller
             'campaign_id' => 'required|exists:campaigns,id',
         ]);
         $campaign = Campaign::findOrFail($validated['campaign_id']);
-        $quote = $this->quoteService->generateFromCampaign($campaign);
+        $runs = $this->groupRunCount($campaign);
+        $quote = $this->quoteService->generateFromCampaign($campaign, $runs);
         return redirect()->route('quotes.show', $quote)->with('success', 'Quote created.');
     }
 
@@ -57,7 +58,8 @@ class QuoteController extends Controller
             'Campaign needs estimated recipients to generate a quote.'
         );
 
-        $quote = $this->quoteService->generateFromCampaign($campaign);
+        $runs = $this->groupRunCount($campaign);
+        $quote = $this->quoteService->generateFromCampaign($campaign, $runs);
 
         return redirect()->route('quotes.show', $quote)
             ->with('success', 'Quote generated successfully.');
@@ -97,5 +99,13 @@ class QuoteController extends Controller
         $pdf = Pdf::loadView('quotes.pdf', compact('quote'));
 
         return $pdf->download("quote_{$quote->quote_number}.pdf");
+    }
+
+    private function groupRunCount(Campaign $campaign): int
+    {
+        if (!$campaign->campaign_group_id) {
+            return 1;
+        }
+        return Campaign::where('campaign_group_id', $campaign->campaign_group_id)->count() ?: 1;
     }
 }

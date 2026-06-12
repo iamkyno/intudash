@@ -26,7 +26,10 @@ class InvoiceController extends Controller
     {
         abort_if(!in_array($campaign->status, ['recipients_uploaded', 'invoice_generated', 'awaiting_payment']), 403, 'Campaign is not ready for invoicing.');
 
-        $invoice = $this->invoiceService->generateFromCampaign($campaign);
+        $runs = $campaign->campaign_group_id
+            ? Campaign::where('campaign_group_id', $campaign->campaign_group_id)->count()
+            : 1;
+        $invoice = $this->invoiceService->generateFromCampaign($campaign, max(1, $runs));
 
         return redirect()->route('invoices.show', $invoice)
             ->with('success', 'Invoice generated successfully.');
