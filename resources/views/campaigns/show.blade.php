@@ -3,170 +3,223 @@
 @section('page-title', $campaign->name)
 
 @section('content')
-<div class="row g-3 mb-3">
-    <div class="col-md-8">
-        <div class="card">
-            <div class="card-header d-flex justify-content-between align-items-center">
-                <span>Campaign Details</span>
-                <div class="d-flex gap-2 align-items-center">
-                    <span class="badge bg-{{ $campaign->status_color }} fs-6">{{ $campaign->status_label }}</span>
-                    @if($campaign->status === 'draft')
-                        <a href="{{ route('campaigns.edit', $campaign) }}" class="btn btn-sm btn-outline-secondary">
-                            <i class="bi bi-pencil"></i> Edit
-                        </a>
-                    @endif
-                    @if(!in_array($campaign->status, ['sending','completed','cancelled']))
-                        <form action="{{ route('campaigns.cancel', $campaign) }}" method="POST" class="d-inline">
-                            @csrf
-                            <button type="submit" class="btn btn-sm btn-outline-danger" onclick="return confirm('Cancel this campaign?')">
-                                Cancel
-                            </button>
-                        </form>
-                    @endif
-                </div>
-            </div>
-            <div class="card-body">
-                <div class="row g-3">
-                    <div class="col-md-6">
-                        <p class="text-muted small mb-1">Client</p>
-                        <p><a href="{{ route('clients.show', $campaign->client) }}" class="text-decoration-none fw-semibold">{{ $campaign->client->company_name }}</a></p>
-                    </div>
-                    <div class="col-md-6">
-                        <p class="text-muted small mb-1">Provider</p>
-                        <p><span class="badge bg-light text-dark text-uppercase">{{ $campaign->provider }}</span>
-                        @if(config('services.smsportal.test_mode'))
-                            <span class="badge bg-warning text-dark ms-1">Test Mode</span>
-                        @endif
-                        </p>
-                    </div>
-                    <div class="col-12">
-                        <p class="text-muted small mb-1">Message</p>
-                        <div class="bg-light rounded p-3">{{ $campaign->message }}</div>
-                    </div>
-                    @if($campaign->notes)
-                    <div class="col-12">
-                        <p class="text-muted small mb-1">Notes</p>
-                        <p>{{ $campaign->notes }}</p>
-                    </div>
-                    @endif
-                </div>
-            </div>
+@php
+$badgeMap = ['draft'=>'badge-neutral','recipients_uploaded'=>'badge-info','invoice_generated'=>'badge-info','awaiting_payment'=>'badge-warning','ready_to_schedule'=>'badge-success','scheduled'=>'badge-brand','sending'=>'badge-info','completed'=>'badge-success','partially_completed'=>'badge-warning','failed'=>'badge-danger','cancelled'=>'badge-neutral'];
+$labelMap = ['draft'=>'Draft','recipients_uploaded'=>'Recipients Uploaded','invoice_generated'=>'Invoice Generated','awaiting_payment'=>'Awaiting Payment','ready_to_schedule'=>'Ready to Schedule','scheduled'=>'Scheduled','sending'=>'Sending','completed'=>'Completed','partially_completed'=>'Partial','failed'=>'Failed','cancelled'=>'Cancelled'];
+@endphp
+
+<div class="page-header">
+    <div class="d-flex align-items-center gap-3">
+        <a href="{{ route('campaigns.index') }}" class="btn btn-ghost btn-sm btn-icon"><i class="bi bi-arrow-left"></i></a>
+        <div>
+            <h1>{{ $campaign->name }}</h1>
+            <p>{{ $campaign->client->company_name }}</p>
         </div>
+        <span class="badge {{ $badgeMap[$campaign->status] ?? 'badge-neutral' }} badge-dot" style="font-size:12px;padding:5px 10px;">
+            {{ $labelMap[$campaign->status] ?? $campaign->status }}
+        </span>
     </div>
-    <div class="col-md-4">
-        <div class="card mb-3">
-            <div class="card-header">Financial Summary</div>
+    <div class="d-flex gap-2">
+        @if($campaign->status === 'draft')
+            <a href="{{ route('campaigns.edit', $campaign) }}" class="btn btn-ghost btn-sm"><i class="bi bi-pencil"></i> Edit</a>
+        @endif
+        @if(!in_array($campaign->status, ['sending','completed','cancelled']))
+            <form action="{{ route('campaigns.cancel', $campaign) }}" method="POST">
+                @csrf
+                <button type="submit" class="btn btn-danger-ghost btn-sm" onclick="return confirm('Cancel this campaign?')">
+                    Cancel
+                </button>
+            </form>
+        @endif
+    </div>
+</div>
+
+<div class="row g-3">
+    <div class="col-md-8 d-flex flex-column gap-3">
+        {{-- Message --}}
+        <div class="card">
+            <div class="card-header">
+                <span class="card-header-title"><i class="bi bi-chat-text"></i> Message</span>
+                <span class="badge badge-neutral">{{ $campaign->sms_segments }} segment{{ $campaign->sms_segments > 1 ? 's' : '' }}</span>
+            </div>
             <div class="card-body">
-                <dl class="row mb-0 small">
-                    <dt class="col-7 text-muted">Segments/SMS</dt>
-                    <dd class="col-5">{{ $campaign->sms_segments }}</dd>
-                    <dt class="col-7 text-muted">Recipients (est.)</dt>
-                    <dd class="col-5">{{ number_format($campaign->estimated_recipients) }}</dd>
-                    <dt class="col-7 text-muted">Recipients (actual)</dt>
-                    <dd class="col-5">{{ number_format($campaign->actual_recipients) }}</dd>
-                    <dt class="col-7 text-muted">Internal Cost/SMS</dt>
-                    <dd class="col-5">R {{ $campaign->internal_cost_per_sms }}</dd>
-                    <dt class="col-7 text-muted">Client Rate/SMS</dt>
-                    <dd class="col-5">R {{ $campaign->client_rate_per_sms }}</dd>
-                    <dt class="col-7 text-muted">Est. Cost</dt>
-                    <dd class="col-5">R {{ number_format($campaign->estimated_cost, 2) }}</dd>
-                    <dt class="col-7 text-muted">Est. Charge</dt>
-                    <dd class="col-5">R {{ number_format($campaign->estimated_charge, 2) }}</dd>
-                    <dt class="col-7 text-muted fw-semibold">Est. Profit</dt>
-                    <dd class="col-5 fw-semibold text-success">R {{ number_format($campaign->estimated_profit, 2) }}</dd>
-                    @if($campaign->actual_charge > 0)
-                    <dt class="col-7 text-muted">Actual Charge</dt>
-                    <dd class="col-5">R {{ number_format($campaign->actual_charge, 2) }}</dd>
-                    <dt class="col-7 text-muted fw-semibold">Actual Profit</dt>
-                    <dd class="col-5 fw-semibold text-success">R {{ number_format($campaign->actual_profit, 2) }}</dd>
-                    @endif
-                </dl>
+                <div style="background:rgba(244,240,237,0.03);border:1px solid var(--color-border);border-radius:6px;padding:14px 16px;font-size:14px;line-height:1.6;color:var(--color-mist);">
+                    {{ $campaign->message }}
+                </div>
+                @if($campaign->notes)
+                    <hr class="divider">
+                    <p style="font-size:13px;color:var(--color-mist-secondary);margin:0;">{{ $campaign->notes }}</p>
+                @endif
             </div>
         </div>
 
-        <!-- Workflow Actions -->
+        {{-- Delivery stats --}}
+        @if($deliveryStats['total'] > 0)
         <div class="card">
-            <div class="card-header">Actions</div>
-            <div class="card-body d-grid gap-2">
+            <div class="card-header">
+                <span class="card-header-title"><i class="bi bi-bar-chart"></i> Delivery</span>
+                <span style="font-size:12px;color:var(--color-mist-tertiary);">{{ $deliveryStats['total'] }} messages</span>
+            </div>
+            <div class="card-body">
+                <div class="row g-3 mb-4">
+                    @foreach([
+                        'delivered'   => ['success', 'Delivered'],
+                        'submitted'   => ['info',    'Submitted'],
+                        'pending'     => ['neutral',  'Pending'],
+                        'undelivered' => ['danger',  'Undelivered'],
+                        'expired'     => ['warning', 'Expired'],
+                        'blacklisted' => ['danger',  'Blacklisted'],
+                        'no_route'    => ['neutral',  'No Route'],
+                        'failed'      => ['danger',  'Failed'],
+                    ] as $key => [$color, $label])
+                    <div class="col-6 col-md-3">
+                        <div style="text-align:center;padding:14px 8px;background:rgba(244,240,237,0.02);border:1px solid var(--color-border);border-radius:6px;">
+                            <div style="font-size:22px;font-weight:600;color:var(--color-{{ $color }});">{{ $deliveryStats[$key] }}</div>
+                            <div style="font-size:11px;color:var(--color-mist-tertiary);margin-top:3px;">{{ $label }}</div>
+                        </div>
+                    </div>
+                    @endforeach
+                </div>
+
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <div class="d-flex justify-content-between mb-1" style="font-size:12px;">
+                            <span style="color:var(--color-mist-secondary);">Delivery rate</span>
+                            <span style="color:var(--color-success);font-weight:600;">{{ $deliveryStats['delivery_pct'] }}%</span>
+                        </div>
+                        <div class="progress" style="height:5px;">
+                            <div class="progress-bar success" style="width:{{ $deliveryStats['delivery_pct'] }}%"></div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="d-flex justify-content-between mb-1" style="font-size:12px;">
+                            <span style="color:var(--color-mist-secondary);">Failure rate</span>
+                            <span style="color:var(--color-danger);font-weight:600;">{{ $deliveryStats['failure_pct'] }}%</span>
+                        </div>
+                        <div class="progress" style="height:5px;">
+                            <div class="progress-bar danger" style="width:{{ $deliveryStats['failure_pct'] }}%"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        @endif
+    </div>
+
+    <div class="col-md-4 d-flex flex-column gap-3">
+        {{-- Financials --}}
+        <div class="card">
+            <div class="card-header">
+                <span class="card-header-title"><i class="bi bi-currency-dollar"></i> Financials</span>
+            </div>
+            <div class="card-body">
+                @php
+                $rows = [
+                    ['SMS Segments', $campaign->sms_segments],
+                    ['Recipients (est.)', number_format($campaign->estimated_recipients)],
+                    ['Recipients (actual)', number_format($campaign->actual_recipients)],
+                    ['Internal Cost / SMS', 'R '.$campaign->internal_cost_per_sms],
+                    ['Client Rate / SMS', 'R '.$campaign->client_rate_per_sms],
+                    ['Est. Cost', 'R '.number_format($campaign->estimated_cost, 2)],
+                    ['Est. Charge', 'R '.number_format($campaign->estimated_charge, 2)],
+                ];
+                @endphp
+                @foreach($rows as [$label, $val])
+                <div class="d-flex justify-content-between mb-2" style="font-size:13px;">
+                    <span style="color:var(--color-mist-secondary);">{{ $label }}</span>
+                    <span style="color:var(--color-mist);">{{ $val }}</span>
+                </div>
+                @endforeach
+                <hr class="divider">
+                <div class="d-flex justify-content-between" style="font-size:14px;font-weight:600;">
+                    <span style="color:var(--color-mist-secondary);">Est. Profit</span>
+                    <span style="color:var(--color-success);">R {{ number_format($campaign->estimated_profit, 2) }}</span>
+                </div>
+                @if($campaign->actual_charge > 0)
+                    <div class="d-flex justify-content-between mt-2" style="font-size:14px;font-weight:600;">
+                        <span style="color:var(--color-mist-secondary);">Actual Profit</span>
+                        <span style="color:var(--color-success);">R {{ number_format($campaign->actual_profit, 2) }}</span>
+                    </div>
+                @endif
+            </div>
+        </div>
+
+        {{-- Actions --}}
+        <div class="card">
+            <div class="card-header">
+                <span class="card-header-title"><i class="bi bi-lightning"></i> Actions</span>
+            </div>
+            <div class="card-body d-flex flex-column gap-2">
                 @if(in_array($campaign->status, ['draft','recipients_uploaded']))
-                    <a href="{{ route('campaigns.recipients', $campaign) }}" class="btn btn-outline-primary btn-sm">
-                        <i class="bi bi-people me-1"></i>Manage Recipients ({{ $campaign->recipients()->where('status','valid')->count() }} valid)
+                    <a href="{{ route('campaigns.recipients', $campaign) }}" class="btn btn-ghost btn-sm">
+                        <i class="bi bi-people"></i> Manage Recipients
+                        <span class="badge badge-neutral ms-auto">{{ $campaign->validRecipients()->count() }} valid</span>
                     </a>
                 @endif
 
-                @if(in_array($campaign->status, ['recipients_uploaded']) && $campaign->validRecipients()->count() > 0)
+                @if($campaign->status === 'recipients_uploaded' && $campaign->validRecipients()->count() > 0)
                     <form action="{{ route('invoices.generate', $campaign) }}" method="POST">
                         @csrf
                         <button type="submit" class="btn btn-primary btn-sm w-100">
-                            <i class="bi bi-receipt me-1"></i>Generate Invoice
+                            <i class="bi bi-receipt"></i> Generate Invoice
                         </button>
                     </form>
                 @endif
 
                 @if($campaign->status === 'invoice_generated')
-                    @foreach($campaign->invoices as $invoice)
-                        <a href="{{ route('invoices.show', $invoice) }}" class="btn btn-outline-warning btn-sm">
-                            <i class="bi bi-receipt me-1"></i>View Invoice {{ $invoice->invoice_number }}
+                    @foreach($campaign->invoices as $inv)
+                        <a href="{{ route('invoices.show', $inv) }}" class="btn btn-ghost btn-sm">
+                            <i class="bi bi-receipt"></i> {{ $inv->invoice_number }}
+                            <span class="badge badge-warning ms-auto">Unpaid</span>
                         </a>
                     @endforeach
                 @endif
 
                 @if($campaign->canBeScheduled())
-                    <button class="btn btn-success btn-sm" data-bs-toggle="modal" data-bs-target="#scheduleModal">
-                        <i class="bi bi-calendar-check me-1"></i>Schedule / Send Campaign
+                    <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#scheduleModal">
+                        <i class="bi bi-calendar-check"></i> Schedule / Send
                     </button>
                 @endif
 
                 @if(in_array($campaign->status, ['completed','partially_completed','sending']))
-                    <a href="{{ route('campaigns.report', $campaign) }}" class="btn btn-outline-info btn-sm">
-                        <i class="bi bi-bar-chart-fill me-1"></i>View Report
+                    <a href="{{ route('campaigns.report', $campaign) }}" class="btn btn-ghost btn-sm">
+                        <i class="bi bi-bar-chart-fill"></i> View Report
                     </a>
-                    <a href="{{ route('campaigns.export-report', $campaign) }}" class="btn btn-outline-secondary btn-sm">
-                        <i class="bi bi-download me-1"></i>Export CSV Report
+                    <a href="{{ route('campaigns.export-report', $campaign) }}" class="btn btn-ghost btn-sm">
+                        <i class="bi bi-download"></i> Export CSV
                     </a>
+                @endif
+            </div>
+        </div>
+
+        {{-- Provider --}}
+        <div class="card">
+            <div class="card-header">
+                <span class="card-header-title"><i class="bi bi-plug"></i> Provider</span>
+            </div>
+            <div class="card-body">
+                <div class="d-flex justify-content-between" style="font-size:13px;">
+                    <span style="color:var(--color-mist-secondary);">Provider</span>
+                    <span class="badge badge-neutral text-uppercase">{{ $campaign->provider }}</span>
+                </div>
+                @if(config('services.smsportal.test_mode'))
+                    <div class="d-flex justify-content-between mt-2" style="font-size:13px;">
+                        <span style="color:var(--color-mist-secondary);">Mode</span>
+                        <span class="badge badge-warning">Test</span>
+                    </div>
+                @endif
+                @if($campaign->provider_campaign_id)
+                    <div class="d-flex justify-content-between mt-2" style="font-size:13px;">
+                        <span style="color:var(--color-mist-secondary);">Event ID</span>
+                        <code>{{ $campaign->provider_campaign_id }}</code>
+                    </div>
                 @endif
             </div>
         </div>
     </div>
 </div>
 
-@if($deliveryStats['total'] > 0)
-<div class="card mb-3">
-    <div class="card-header"><i class="bi bi-bar-chart me-2 text-primary"></i>Delivery Stats</div>
-    <div class="card-body">
-        <div class="row g-3">
-            @foreach(['submitted'=>'primary','delivered'=>'success','undelivered'=>'danger','expired'=>'warning','blacklisted'=>'danger','no_route'=>'secondary','failed'=>'danger','pending'=>'secondary'] as $key => $color)
-            <div class="col-6 col-md-3">
-                <div class="text-center p-2 rounded border">
-                    <div class="fw-bold fs-5 text-{{ $color }}">{{ $deliveryStats[$key] }}</div>
-                    <div class="text-muted small">{{ ucfirst(str_replace('_', ' ', $key)) }}</div>
-                </div>
-            </div>
-            @endforeach
-        </div>
-        <div class="row mt-3">
-            <div class="col-md-6">
-                <div class="d-flex justify-content-between small mb-1">
-                    <span>Delivery Rate</span><span class="text-success fw-semibold">{{ $deliveryStats['delivery_pct'] }}%</span>
-                </div>
-                <div class="progress" style="height:8px">
-                    <div class="progress-bar bg-success" style="width:{{ $deliveryStats['delivery_pct'] }}%"></div>
-                </div>
-            </div>
-            <div class="col-md-6">
-                <div class="d-flex justify-content-between small mb-1">
-                    <span>Failure Rate</span><span class="text-danger fw-semibold">{{ $deliveryStats['failure_pct'] }}%</span>
-                </div>
-                <div class="progress" style="height:8px">
-                    <div class="progress-bar bg-danger" style="width:{{ $deliveryStats['failure_pct'] }}%"></div>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
-@endif
-
-<!-- Schedule Modal -->
+{{-- Schedule Modal --}}
 <div class="modal fade" id="scheduleModal" tabindex="-1">
     <div class="modal-dialog">
         <div class="modal-content">
@@ -177,30 +230,34 @@
             <form action="{{ route('campaigns.schedule', $campaign) }}" method="POST">
                 @csrf
                 <div class="modal-body">
-                    <div class="mb-3">
-                        <label class="form-label">Send Option</label>
-                        <div class="form-check">
-                            <input class="form-check-input" type="radio" name="send_type" id="sendImmediate" value="immediate" checked>
-                            <label class="form-check-label" for="sendImmediate">
-                                <strong>Send Immediately</strong> — starts sending now
+                    <div class="mb-4">
+                        <label class="form-label mb-3">Send option</label>
+                        <div style="display:flex;flex-direction:column;gap:10px;">
+                            <label style="display:flex;align-items:flex-start;gap:10px;padding:12px 14px;border:1px solid var(--color-border);border-radius:6px;cursor:pointer;" id="opt-immediate">
+                                <input type="radio" name="send_type" value="immediate" checked style="margin-top:2px;">
+                                <div>
+                                    <div style="font-size:13px;font-weight:500;color:var(--color-mist);">Send Immediately</div>
+                                    <div style="font-size:12px;color:var(--color-mist-tertiary);">Starts sending right now via the queue</div>
+                                </div>
                             </label>
-                        </div>
-                        <div class="form-check mt-2">
-                            <input class="form-check-input" type="radio" name="send_type" id="sendScheduled" value="scheduled">
-                            <label class="form-check-label" for="sendScheduled">
-                                <strong>Schedule for Later</strong>
+                            <label style="display:flex;align-items:flex-start;gap:10px;padding:12px 14px;border:1px solid var(--color-border);border-radius:6px;cursor:pointer;" id="opt-scheduled">
+                                <input type="radio" name="send_type" value="scheduled" style="margin-top:2px;" id="radioScheduled">
+                                <div>
+                                    <div style="font-size:13px;font-weight:500;color:var(--color-mist);">Schedule for Later</div>
+                                    <div style="font-size:12px;color:var(--color-mist-tertiary);">Pick a date and time (SAST)</div>
+                                </div>
                             </label>
                         </div>
                     </div>
                     <div id="scheduleFields" class="d-none">
-                        <label class="form-label">Date & Time (SAST)</label>
+                        <label class="form-label">Date &amp; Time</label>
                         <input type="datetime-local" name="scheduled_at" class="form-control"
                             min="{{ now()->addMinutes(5)->format('Y-m-d\TH:i') }}">
                     </div>
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn btn-success">Confirm</button>
+                    <button type="button" class="btn btn-ghost btn-sm" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary btn-sm">Confirm</button>
                 </div>
             </form>
         </div>
@@ -214,7 +271,7 @@ document.querySelectorAll('input[name="send_type"]').forEach(r => {
         document.getElementById('scheduleFields').classList.toggle('d-none', r.value !== 'scheduled' || !r.checked);
     });
 });
-document.getElementById('sendScheduled')?.addEventListener('change', function() {
+document.getElementById('radioScheduled')?.addEventListener('change', function() {
     document.getElementById('scheduleFields').classList.toggle('d-none', !this.checked);
 });
 </script>
