@@ -55,9 +55,43 @@
         <label class="form-label">Campaign Notes</label>
         <textarea name="notes" class="form-control" rows="2">{{ old('notes', $campaign->notes ?? '') }}</textarea>
     </div>
+    @if(!isset($campaign) || !$campaign->exists)
+    <div class="col-12">
+        <div class="card" style="background:var(--surface-bg);border:1px solid var(--surface-border);">
+            <div class="card-body py-3">
+                <div class="d-flex align-items-center gap-3 mb-2">
+                    <div class="form-check form-switch mb-0">
+                        <input class="form-check-input" type="checkbox" id="repeatToggle" name="repeat_enabled" value="1"
+                            {{ old('repeat_enabled') ? 'checked' : '' }} onchange="toggleRepeat(this)">
+                        <label class="form-check-label fw-semibold" for="repeatToggle">Repeat this campaign</label>
+                    </div>
+                </div>
+                <div id="repeatSection" style="{{ old('repeat_enabled') ? '' : 'display:none;' }}">
+                    <p class="small mb-2" style="color:var(--text-secondary);">Creates multiple copies of this campaign. You can edit the schedule and message for each run after creation.</p>
+                    <div class="row g-2 align-items-center">
+                        <div class="col-auto">
+                            <label class="form-label mb-0">Number of runs</label>
+                        </div>
+                        <div class="col-auto">
+                            <input type="number" name="repeat_count" id="repeatCount" class="form-control form-control-sm"
+                                min="2" max="52" value="{{ old('repeat_count', 2) }}" style="width:80px;">
+                        </div>
+                        <div class="col-auto">
+                            <span class="small" style="color:var(--text-secondary);">campaigns will be created (Run 1 of N … Run N of N)</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    @endif
 </div>
 
 <script>
+function toggleRepeat(checkbox) {
+    document.getElementById('repeatSection').style.display = checkbox.checked ? '' : 'none';
+}
+
 document.querySelector('select[name="client_id"]')?.addEventListener('change', function() {
     const opt = this.options[this.selectedIndex];
     const rate = opt.dataset.rate;

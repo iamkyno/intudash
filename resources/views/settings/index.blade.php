@@ -58,12 +58,13 @@
                             </div>
                         </div>
                         <div class="col-md-4">
-                            <label class="form-label">VAT Enabled</label>
+                            <label class="form-label">VAT Registered</label>
                             <div class="form-check form-switch mt-2">
-                                <input class="form-check-input" type="checkbox" name="vat_enabled" value="1"
-                                    {{ ($settings['vat_enabled'] ?? '1') == '1' ? 'checked' : '' }}>
-                                <label class="form-check-label">Enable VAT on invoices</label>
+                                <input class="form-check-input" type="checkbox" name="vat_registered" id="vatRegistered" value="1"
+                                    {{ ($settings['vat_registered'] ?? '0') == '1' ? 'checked' : '' }}>
+                                <label class="form-check-label" for="vatRegistered">Business is VAT registered</label>
                             </div>
+                            <small class="text-muted">When enabled, quotes &amp; invoices show ex-VAT + VAT breakdown.</small>
                         </div>
                     </div>
                 </div>

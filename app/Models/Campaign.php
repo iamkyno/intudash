@@ -18,7 +18,7 @@ class Campaign extends Model
         'estimated_profit', 'actual_cost', 'actual_charge', 'actual_profit',
         'sender_name', 'scheduled_at', 'scheduled_end_at', 'sent_at', 'completed_at',
         'provider_response', 'provider', 'provider_campaign_id', 'admin_override_payment',
-        'is_recurring_schedule', 'archived_at',
+        'is_recurring_schedule', 'archived_at', 'campaign_group_id', 'campaign_group_run',
     ];
 
     protected $casts = [

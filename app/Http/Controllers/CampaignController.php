@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Jobs\SendCampaignJob;
+use Illuminate\Support\Str;
 use App\Models\Campaign;
 use App\Models\Client;
 use App\Services\AuditLogService;
@@ -50,11 +51,34 @@ class CampaignController extends Controller
             'client_rate_per_sms' => 'required|numeric|min:0',
             'estimated_recipients' => 'nullable|integer|min:0',
             'sender_name' => 'nullable|string|max:11',
+            'repeat_enabled' => 'nullable|boolean',
+            'repeat_count' => 'nullable|integer|min:2|max:52',
         ]);
 
         $smsCount = SmsCounter::count($validated['message']);
         $validated['sms_segments'] = $smsCount['segments'];
         $validated['user_id'] = auth()->id();
+
+        $repeatCount = ($validated['repeat_enabled'] ?? false) ? (int) ($validated['repeat_count'] ?? 2) : 1;
+        unset($validated['repeat_enabled'], $validated['repeat_count']);
+
+        if ($repeatCount > 1) {
+            $groupId = Str::uuid()->toString();
+            $baseName = $validated['name'];
+            $first = null;
+            for ($i = 1; $i <= $repeatCount; $i++) {
+                $data = array_merge($validated, [
+                    'name' => "{$baseName} (Run {$i} of {$repeatCount})",
+                    'campaign_group_id' => $groupId,
+                    'campaign_group_run' => $i,
+                ]);
+                $c = Campaign::create($data);
+                AuditLogService::log('campaign_created', $c, null, ['name' => $c->name]);
+                if ($i === 1) $first = $c;
+            }
+            return redirect()->route('campaigns.show', $first)
+                ->with('success', "{$repeatCount} campaign runs created. You're viewing Run 1.");
+        }
 
         $campaign = Campaign::create($validated);
         AuditLogService::log('campaign_created', $campaign, null, ['name' => $campaign->name]);

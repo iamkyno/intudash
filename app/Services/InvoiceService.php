@@ -10,39 +10,46 @@ use App\Models\AppSetting;
 
 class InvoiceService
 {
-    public function generateFromCampaign(Campaign $campaign): Invoice
+    public function generateFromCampaign(Campaign $campaign, int $runs = 1): Invoice
     {
-        $vatEnabled = AppSetting::get('vat_enabled', config('app.vat_enabled', true));
-        $vatRate = (float) AppSetting::get('vat_rate', config('app.vat_rate', 15));
+        $vatRegistered = AppSetting::get('vat_registered', '0') == '1';
+        $vatRate = $vatRegistered ? (float) AppSetting::get('vat_rate', 15) : 0;
         $prefix = AppSetting::get('invoice_prefix', 'INV');
 
-        $quantity = $campaign->validRecipients()->count() * $campaign->sms_segments;
+        $recipientCount = $campaign->validRecipients()->count() ?: ($campaign->estimated_recipients ?? 0);
+        $smsPerRun = $recipientCount * $campaign->sms_segments;
+        $quantity = $smsPerRun * $runs;
         $rate = (float) $campaign->client_rate_per_sms;
+
+        // When VAT registered: subtotal is ex-VAT, total includes VAT
+        // When not VAT registered: total is VAT-inclusive, no breakdown shown
         $subtotal = round($quantity * $rate, 2);
-        $vatAmount = $vatEnabled ? round($subtotal * ($vatRate / 100), 2) : 0;
+        $vatAmount = $vatRegistered ? round($subtotal * ($vatRate / 100), 2) : 0;
         $total = $subtotal + $vatAmount;
 
         $invoice = Invoice::create([
-            'client_id' => $campaign->client_id,
-            'campaign_id' => $campaign->id,
+            'client_id'    => $campaign->client_id,
+            'campaign_id'  => $campaign->id,
             'invoice_number' => $this->generateInvoiceNumber($prefix),
-            'status' => 'draft',
+            'status'       => 'draft',
             'sms_quantity' => $quantity,
-            'sms_rate' => $rate,
-            'subtotal' => $subtotal,
-            'vat_enabled' => $vatEnabled,
-            'vat_rate' => $vatRate,
-            'vat_amount' => $vatAmount,
-            'total' => $total,
-            'due_date' => now()->addDays(7),
+            'sms_rate'     => $rate,
+            'subtotal'     => $subtotal,
+            'vat_enabled'  => $vatRegistered,
+            'vat_rate'     => $vatRate,
+            'vat_amount'   => $vatAmount,
+            'total'        => $total,
+            'due_date'     => now()->addDays(7),
         ]);
 
+        $runLabel = $runs > 1 ? " × {$runs} run" . ($runs > 1 ? 's' : '') : '';
+        $segLabel = $campaign->sms_segments > 1 ? ", {$campaign->sms_segments} segments/msg" : '';
         InvoiceItem::create([
-            'invoice_id' => $invoice->id,
-            'description' => "Bulk SMS - {$campaign->name} ({$quantity} SMS @ R{$rate} each)",
-            'quantity' => $quantity,
-            'unit_price' => $rate,
-            'total' => $subtotal,
+            'invoice_id'  => $invoice->id,
+            'description' => "Bulk SMS — {$campaign->name}{$runLabel} | " . number_format($recipientCount) . " recipients{$segLabel}",
+            'quantity'    => $quantity,
+            'unit_price'  => $rate,
+            'total'       => $subtotal,
         ]);
 
         $campaign->update(['status' => 'invoice_generated']);

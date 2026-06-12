@@ -22,7 +22,7 @@ class SettingsController extends Controller
             'company_phone' => 'nullable|string',
             'company_vat_number' => 'nullable|string',
             'invoice_prefix' => 'required|string|max:10',
-            'vat_enabled' => 'boolean',
+            'vat_registered' => 'boolean',
             'vat_rate' => 'required|numeric|min:0|max:100',
             'default_internal_cost' => 'required|numeric|min:0',
             'default_client_rate' => 'required|numeric|min:0',

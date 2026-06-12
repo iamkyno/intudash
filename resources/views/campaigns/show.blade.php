@@ -36,6 +36,29 @@ $labelMap = ['draft'=>'Draft','recipients_uploaded'=>'Recipients Uploaded','invo
 
 @include('campaigns._status_guide')
 
+@if($campaign->campaign_group_id)
+@php
+$siblings = \App\Models\Campaign::where('campaign_group_id', $campaign->campaign_group_id)
+    ->orderBy('campaign_group_run')->get();
+@endphp
+<div class="card mb-3">
+    <div class="card-header">
+        <span class="card-header-title"><i class="bi bi-collection"></i> Campaign Group — {{ $siblings->count() }} runs</span>
+    </div>
+    <div class="card-body py-2">
+        <div class="d-flex flex-wrap gap-2">
+            @foreach($siblings as $sib)
+            <a href="{{ route('campaigns.show', $sib) }}"
+               class="btn btn-sm {{ $sib->id === $campaign->id ? 'btn-primary' : 'btn-ghost' }}">
+                Run {{ $sib->campaign_group_run }}
+                <span class="badge {{ $badgeMap[$sib->status] ?? 'badge-neutral' }} ms-1" style="font-size:10px;">{{ $labelMap[$sib->status] ?? $sib->status }}</span>
+            </a>
+            @endforeach
+        </div>
+    </div>
+</div>
+@endif
+
 <div class="row g-3">
     <div class="col-md-8 d-flex flex-column gap-3">
         {{-- Message --}}
