@@ -237,6 +237,24 @@ $labelMap = ['draft'=>'Draft','recipients_uploaded'=>'Recipients Uploaded','invo
                         <i class="bi bi-download"></i> Export CSV
                     </a>
                 @endif
+
+                @if(in_array($campaign->status, ['completed','partially_completed','cancelled','failed']) && !$campaign->isArchived())
+                    <form action="{{ route('campaigns.archive', $campaign) }}" method="POST">
+                        @csrf
+                        <button type="submit" class="btn btn-ghost btn-sm w-100" onclick="return confirm('Archive this campaign?')">
+                            <i class="bi bi-archive"></i> Archive Campaign
+                        </button>
+                    </form>
+                @endif
+
+                @if($campaign->status === 'draft')
+                    <form action="{{ route('campaigns.destroy', $campaign) }}" method="POST">
+                        @csrf @method('DELETE')
+                        <button type="submit" class="btn btn-danger-ghost btn-sm w-100" onclick="return confirm('Permanently delete this draft campaign?')">
+                            <i class="bi bi-trash"></i> Delete Campaign
+                        </button>
+                    </form>
+                @endif
             </div>
         </div>
 

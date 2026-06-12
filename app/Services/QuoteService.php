@@ -17,7 +17,7 @@ class QuoteService
         $vatEnabled = AppSetting::get('vat_enabled', config('app.vat_enabled', true));
         $vatRate = (float) AppSetting::get('vat_rate', config('app.vat_rate', 15));
 
-        $quantity = $campaign->validRecipients()->count() * $campaign->sms_segments;
+        $quantity = (($campaign->estimated_recipients > 0 ? $campaign->estimated_recipients : $campaign->validRecipients()->count())) * $campaign->sms_segments;
         $rate = (float) $campaign->client_rate_per_sms;
         $subtotal = round($quantity * $rate, 2);
         $vatAmount = $vatEnabled ? round($subtotal * ($vatRate / 100), 2) : 0;

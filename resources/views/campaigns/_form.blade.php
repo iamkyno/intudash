@@ -64,4 +64,12 @@ document.querySelector('select[name="client_id"]')?.addEventListener('change', f
     if (rate) document.getElementById('client_rate_per_sms').value = rate;
     if (typeof updateEstimator === 'function') updateEstimator();
 });
+
+// Trigger rate population on page load if client is pre-selected
+document.addEventListener('DOMContentLoaded', function() {
+    const clientSelect = document.querySelector('select[name="client_id"]');
+    if (clientSelect && clientSelect.value) {
+        clientSelect.dispatchEvent(new Event('change'));
+    }
+});
 </script>
