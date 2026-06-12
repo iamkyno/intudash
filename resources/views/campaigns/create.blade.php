@@ -53,6 +53,10 @@
                     <span class="text-muted">SMS Segments:</span>
                     <span id="est-segments">1</span>
                 </div>
+                <div class="d-flex justify-content-between small mb-1" id="est-runs-row" style="display:none!important;">
+                    <span class="text-muted">Runs:</span>
+                    <span id="est-runs">1</span>
+                </div>
                 <div class="d-flex justify-content-between small mb-1">
                     <span class="text-muted">Total SMS:</span>
                     <span id="est-total-sms">0</span>
@@ -91,11 +95,18 @@ function countSms(msg) {
     return { len, segments, hasExtended, remaining };
 }
 
+function getRepeatRuns() {
+    const toggle = document.getElementById('repeatToggle');
+    if (!toggle || !toggle.checked) return 1;
+    return Math.max(1, parseInt(document.getElementById('repeatCount')?.value || 1));
+}
+
 function updateEstimator() {
     const msg = document.getElementById('message').value;
     const recipients = parseInt(document.getElementById('estimated_recipients')?.value || 0);
     const internalCost = parseFloat(document.getElementById('internal_cost_per_sms')?.value || 0);
     const clientRate = parseFloat(document.getElementById('client_rate_per_sms')?.value || 0);
+    const runs = getRepeatRuns();
 
     const { len, segments, hasExtended, remaining } = countSms(msg);
 
@@ -111,7 +122,15 @@ function updateEstimator() {
     document.getElementById('extended-warning').classList.toggle('d-none', !hasExtended);
     document.getElementById('multi-segment-warning').classList.toggle('d-none', segments <= 1);
 
-    const totalSms = recipients * segments;
+    const runsRow = document.getElementById('est-runs-row');
+    if (runs > 1) {
+        runsRow.style.removeProperty('display');
+        document.getElementById('est-runs').textContent = runs + ' runs';
+    } else {
+        runsRow.style.setProperty('display', 'none', 'important');
+    }
+
+    const totalSms = recipients * segments * runs;
     const cost = totalSms * internalCost;
     const charge = totalSms * clientRate;
     const profit = charge - cost;
@@ -129,6 +148,8 @@ function updateEstimator() {
 ['message','estimated_recipients','internal_cost_per_sms','client_rate_per_sms'].forEach(id => {
     document.getElementById(id)?.addEventListener('input', updateEstimator);
 });
+document.getElementById('repeatToggle')?.addEventListener('change', updateEstimator);
+document.getElementById('repeatCount')?.addEventListener('input', updateEstimator);
 updateEstimator();
 </script>
 @endpush
