@@ -112,7 +112,7 @@
             padding: 7px 20px;
             font-size: 13.5px;
             font-weight: 450;
-            color: var(--color-mist-secondary);
+            color: rgba(244,240,237,0.62);
             border-left: 2px solid transparent;
             transition: color 0.15s, background 0.15s, border-color 0.15s;
             margin: 1px 0;
@@ -269,7 +269,7 @@
         .stat-label {
             font-size: 11.5px;
             font-weight: 500;
-            color: var(--color-mist-tertiary);
+            color: rgba(244,240,237,0.45);
             text-transform: uppercase;
             letter-spacing: 0.06em;
             margin-bottom: 8px;
@@ -288,7 +288,7 @@
         .stat-meta {
             margin-top: 5px;
             font-size: 12px;
-            color: var(--color-mist-tertiary);
+            color: rgba(244,240,237,0.38);
         }
         .stat-dot {
             display: inline-block;
@@ -303,7 +303,7 @@
             --bs-table-bg: transparent;
             --bs-table-color: var(--color-mist);
             --bs-table-border-color: var(--color-border);
-            --bs-table-hover-bg: rgba(244,240,237,0.03);
+            --bs-table-hover-bg: rgba(244,240,237,0.04);
             --bs-table-hover-color: var(--color-mist);
             margin: 0;
         }
@@ -312,23 +312,24 @@
             font-weight: 600;
             letter-spacing: 0.07em;
             text-transform: uppercase;
-            color: var(--color-mist-tertiary);
+            color: rgba(244,240,237,0.45);
             border-bottom: 1px solid var(--color-border);
             padding: 10px 16px;
             white-space: nowrap;
             background: transparent;
         }
         .table tbody td {
-            padding: 11px 16px;
-            color: var(--color-mist-secondary);
+            padding: 12px 16px;
+            color: rgba(244,240,237,0.75);
             border-bottom: 1px solid var(--color-border);
             vertical-align: middle;
+            font-size: 13.5px;
         }
         .table tbody tr:last-child td { border-bottom: none; }
-        .table tbody tr:hover td { background: rgba(244,240,237,0.02); }
-        .table-link { color: var(--color-mist); font-weight: 500; }
-        .table-link:hover { color: var(--color-brand); }
-        .table-muted { color: var(--color-mist-tertiary) !important; font-size: 12px; }
+        .table tbody tr:hover td { background: rgba(244,240,237,0.025); }
+        .table-link { color: var(--color-mist) !important; font-weight: 500; }
+        .table-link:hover { color: var(--color-brand) !important; }
+        .table-muted { color: rgba(244,240,237,0.4) !important; font-size: 12.5px; }
 
         /* ── Badges ──────────────────────────────────────────────────── */
         .badge {
@@ -390,11 +391,11 @@
         .form-label {
             font-size: 12.5px;
             font-weight: 500;
-            color: var(--color-mist-secondary);
+            color: rgba(244,240,237,0.7);
             margin-bottom: 6px;
         }
         .form-control, .form-select {
-            background: rgba(244,240,237,0.04);
+            background: rgba(244,240,237,0.05);
             border: 1px solid var(--color-border);
             border-radius: var(--radius-sm);
             color: var(--color-mist);
@@ -402,7 +403,7 @@
             padding: 8px 12px;
             transition: border-color 0.15s, box-shadow 0.15s;
         }
-        .form-control::placeholder { color: var(--color-mist-tertiary); }
+        .form-control::placeholder { color: rgba(244,240,237,0.28); }
         .form-control:focus, .form-select:focus {
             background: rgba(244,240,237,0.06);
             border-color: var(--color-brand);
@@ -414,9 +415,9 @@
         .form-control.is-invalid { border-color: var(--color-danger); }
         .invalid-feedback { color: var(--color-danger); font-size: 12px; }
         .input-group-text {
-            background: rgba(244,240,237,0.04);
+            background: rgba(244,240,237,0.05);
             border: 1px solid var(--color-border);
-            color: var(--color-mist-tertiary);
+            color: rgba(244,240,237,0.5);
             font-size: 13px;
         }
         .form-check-input {
@@ -503,8 +504,8 @@
         /* ── Utilities ───────────────────────────────────────────────── */
         .text-brand   { color: var(--color-brand) !important; }
         .text-mist    { color: var(--color-mist) !important; }
-        .text-muted   { color: var(--color-mist-secondary) !important; }
-        .text-faint   { color: var(--color-mist-tertiary) !important; }
+        .text-muted   { color: rgba(244,240,237,0.55) !important; }
+        .text-faint   { color: rgba(244,240,237,0.35) !important; }
         .text-success { color: var(--color-success) !important; }
         .text-warning { color: var(--color-warning) !important; }
         .text-danger  { color: var(--color-danger) !important; }
