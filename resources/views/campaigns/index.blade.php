@@ -18,6 +18,8 @@
     </div>
 </div>
 
+@include('campaigns._status_guide')
+
 {{-- Filters --}}
 <div class="card mb-3">
     <div class="card-body">

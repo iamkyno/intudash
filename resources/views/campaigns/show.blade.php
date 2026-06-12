@@ -34,6 +34,8 @@ $labelMap = ['draft'=>'Draft','recipients_uploaded'=>'Recipients Uploaded','invo
     </div>
 </div>
 
+@include('campaigns._status_guide')
+
 <div class="row g-3">
     <div class="col-md-8 d-flex flex-column gap-3">
         {{-- Message --}}
@@ -247,10 +249,15 @@ $labelMap = ['draft'=>'Draft','recipients_uploaded'=>'Recipients Uploaded','invo
                     </form>
                 @endif
 
-                @if($campaign->status === 'draft')
+                @php
+                    $canDelete = in_array($campaign->status, ['draft','scheduled','cancelled','failed'])
+                        && !in_array($campaign->status, ['sending','completed','partially_completed'])
+                        && ($campaign->status !== 'scheduled' || ($campaign->scheduled_at && $campaign->scheduled_at->isFuture()));
+                @endphp
+                @if($canDelete)
                     <form action="{{ route('campaigns.destroy', $campaign) }}" method="POST">
                         @csrf @method('DELETE')
-                        <button type="submit" class="btn btn-danger-ghost btn-sm w-100" onclick="return confirm('Permanently delete this draft campaign?')">
+                        <button type="submit" class="btn btn-danger-ghost btn-sm w-100" onclick="return confirm('Permanently delete this campaign? This cannot be undone.')">
                             <i class="bi bi-trash"></i> Delete Campaign
                         </button>
                     </form>

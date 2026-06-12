@@ -140,20 +140,29 @@ class SmsService
 
     private function updateCampaignStatus(Campaign $campaign): void
     {
-        $logs = $campaign->smsLogs();
-        $total = $logs->count();
-        $delivered = $logs->where('status', 'delivered')->count();
-        $failed = $logs->whereIn('status', ['undelivered', 'expired', 'failed', 'no_route'])->count();
-        $pending = $logs->whereIn('status', ['pending', 'submitted', 'staged'])->count();
+        // Only transition if campaign is in an active sending state
+        if (!in_array($campaign->status, ['sending', 'paused'])) {
+            return;
+        }
 
-        if ($pending === 0) {
-            if ($failed === 0) {
-                $campaign->update(['status' => 'completed', 'completed_at' => now()]);
-            } elseif ($delivered > 0) {
-                $campaign->update(['status' => 'partially_completed', 'completed_at' => now()]);
-            } else {
-                $campaign->update(['status' => 'failed']);
-            }
+        $logs = $campaign->smsLogs();
+        $delivered  = $logs->where('status', 'delivered')->count();
+        $failed     = $logs->whereIn('status', ['undelivered', 'expired', 'failed', 'no_route', 'blacklisted', 'cancelled'])->count();
+        $pending    = $logs->whereIn('status', ['pending', 'submitted', 'staged'])->count();
+
+        // Wait until every log has a final status before marking complete
+        if ($pending > 0) {
+            return;
+        }
+
+        $campaign->update(['completed_at' => now()]);
+
+        if ($delivered > 0 && $failed === 0) {
+            $campaign->update(['status' => 'completed']);
+        } elseif ($delivered > 0) {
+            $campaign->update(['status' => 'partially_completed']);
+        } else {
+            $campaign->update(['status' => 'failed']);
         }
     }
 }

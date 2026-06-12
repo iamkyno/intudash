@@ -123,7 +123,11 @@ class CampaignController extends Controller
 
     public function destroy(Campaign $campaign)
     {
-        abort_if($campaign->status !== 'draft', 403, 'Only draft campaigns can be deleted.');
+        $canDelete = in_array($campaign->status, ['draft', 'scheduled', 'cancelled', 'failed'])
+            && !in_array($campaign->status, ['sending', 'completed', 'partially_completed'])
+            && ($campaign->status !== 'scheduled' || ($campaign->scheduled_at && $campaign->scheduled_at->isFuture()));
+
+        abort_if(!$canDelete, 403, 'Campaign cannot be deleted once it is live or completed.');
         AuditLogService::log('campaign_deleted', $campaign);
         $campaign->delete();
 
