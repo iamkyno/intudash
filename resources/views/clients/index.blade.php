@@ -39,8 +39,8 @@
                     <td>{{ $client->contact_person }}</td>
                     <td class="table-muted">{{ $client->email }}</td>
                     <td class="table-muted">{{ $client->phone }}</td>
-                    <td style="font-size:13px;color:var(--color-mist);">R {{ number_format($client->default_sms_rate, 4) }}</td>
-                    <td style="font-size:13px;color:var(--color-mist);">{{ $client->campaigns_count }}</td>
+                    <td style="font-size:13px;color:var(--text-primary);">R {{ number_format($client->default_sms_rate, 4) }}</td>
+                    <td style="font-size:13px;color:var(--text-primary);">{{ $client->campaigns_count }}</td>
                     <td>
                         @if($client->status === 'active')
                             <span class="badge badge-success badge-dot">Active</span>
@@ -61,7 +61,7 @@
                 </tr>
                 @empty
                 <tr>
-                    <td colspan="8" style="text-align:center;padding:40px;color:var(--color-mist-tertiary);">
+                    <td colspan="8" style="text-align:center;padding:40px;color:var(--text-tertiary);">
                         No clients yet. <a href="{{ route('clients.create') }}" class="text-brand">Add your first client</a>
                     </td>
                 </tr>

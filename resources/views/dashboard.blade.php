@@ -98,7 +98,7 @@
             </div>
             <div class="card-body-flush">
                 @if($recentActivity->isEmpty())
-                    <div style="padding:32px;text-align:center;color:var(--color-mist-tertiary);font-size:13px;">
+                    <div style="padding:32px;text-align:center;color:var(--text-tertiary);font-size:13px;">
                         No activity yet
                     </div>
                 @else
@@ -154,10 +154,10 @@
                         <span class="badge {{ $statusMap[$status]['class'] ?? 'badge-neutral' }} badge-dot">
                             {{ $statusMap[$status]['label'] ?? $status }}
                         </span>
-                        <span style="font-size:13px;font-weight:600;color:var(--color-mist);">{{ $count }}</span>
+                        <span style="font-size:13px;font-weight:600;color:var(--text-primary);">{{ $count }}</span>
                     </div>
                 @empty
-                    <span style="font-size:13px;color:var(--color-mist-tertiary);">No campaigns yet</span>
+                    <span style="font-size:13px;color:var(--text-tertiary);">No campaigns yet</span>
                 @endforelse
             </div>
         </div>

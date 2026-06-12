@@ -165,18 +165,37 @@
         </div>
         @endif
 
-        @if($quote->status === 'accepted' && $quote->invoice)
-        <div class="card">
-            <div class="card-header">
-                <span class="card-header-title"><i class="bi bi-receipt"></i> Invoice</span>
-            </div>
-            <div class="card-body">
-                <a href="{{ route('invoices.show', $quote->invoice) }}" class="btn btn-ghost btn-sm w-100">
-                    <i class="bi bi-receipt"></i> {{ $quote->invoice->invoice_number }}
-                    <span class="badge badge-success ms-auto">Accepted</span>
-                </a>
+        @if($quote->status === 'accepted')
+        <div class="card" style="border-color:#B6E8CF;">
+            <div class="card-header" style="background:#EDFAF3;border-color:#B6E8CF;">
+                <span class="card-header-title" style="color:#1A6B3F;"><i class="bi bi-check-circle-fill"></i> Quote Accepted</span>
                 @if($quote->accepted_at)
-                    <div style="font-size:12px;color:var(--text-tertiary);margin-top:8px;">Accepted {{ $quote->accepted_at->format('d M Y') }}</div>
+                    <span style="font-size:11px;color:#1A6B3F;">{{ $quote->accepted_at->format('d M Y') }}</span>
+                @endif
+            </div>
+            <div class="card-body d-flex flex-column gap-2">
+                @if($quote->invoice)
+                    <a href="{{ route('invoices.show', $quote->invoice) }}" class="btn btn-ghost btn-sm">
+                        <i class="bi bi-receipt"></i> {{ $quote->invoice->invoice_number }}
+                        <span class="badge {{ $quote->invoice->status === 'paid' ? 'badge-success' : 'badge-warning' }} ms-auto">{{ ucfirst($quote->invoice->status) }}</span>
+                    </a>
+                    @if($quote->invoice->status === 'paid')
+                        <div class="d-flex align-items-center gap-2" style="font-size:13px;color:#1A6B3F;padding:8px 0;">
+                            <i class="bi bi-check-circle-fill"></i>
+                            <span>Invoice paid{{ $quote->invoice->paid_at ? ' on '.$quote->invoice->paid_at->format('d M Y') : '' }} — campaign ready to schedule</span>
+                        </div>
+                    @else
+                        <div style="font-size:12px;color:var(--text-tertiary);">Invoice generated. Mark as paid to unlock scheduling.</div>
+                    @endif
+                @endif
+                @if($quote->campaign)
+                    <a href="{{ route('campaigns.show', $quote->campaign) }}" class="btn btn-ghost btn-sm">
+                        <i class="bi bi-megaphone"></i> View Campaign
+                        @php $cs = $quote->campaign->status; @endphp
+                        <span class="badge {{ ['ready_to_schedule'=>'badge-success','scheduled'=>'badge-brand','sending'=>'badge-info','completed'=>'badge-success','paused'=>'badge-warning'][$cs] ?? 'badge-neutral' }} ms-auto">
+                            {{ ucwords(str_replace('_',' ',$cs)) }}
+                        </span>
+                    </a>
                 @endif
             </div>
         </div>
