@@ -18,7 +18,7 @@ class QuoteController extends Controller
         $clients = Client::where('status', 'active')->get();
         $campaigns = Campaign::with('client')
             ->whereIn('status', ['draft', 'recipients_uploaded'])
-            ->whereRaw('estimated_recipients > 0 OR id IN (SELECT campaign_id FROM recipients WHERE status = "valid")')
+            ->whereRaw('estimated_recipients > 0 OR id IN (SELECT campaign_id FROM campaign_recipients WHERE status = "valid")')
             ->latest()->get();
         return view('quotes.create', compact('clients', 'campaigns'));
     }
