@@ -22,6 +22,7 @@ class Invoice extends Model
         'paid_at' => 'datetime',
         'due_date' => 'date',
         'sms_rate' => 'decimal:4',
+        'email_rate' => 'decimal:6',
     ];
 
     public function client()

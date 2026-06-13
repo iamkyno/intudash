@@ -5,15 +5,22 @@ namespace App\Services;
 use App\Models\AppSetting;
 use App\Models\Campaign;
 use App\Models\CampaignRecipient;
+use App\Models\EmailLog;
 use Aws\Ses\SesClient;
 use Aws\Exception\AwsException;
 use Illuminate\Support\Facades\Log;
 
 class EmailService
 {
+    private ?SesClient $client = null;
+
     private function client(): SesClient
     {
-        return new SesClient([
+        if ($this->client) {
+            return $this->client;
+        }
+
+        return $this->client = new SesClient([
             'version' => 'latest',
             'region'  => AppSetting::get('aws_region', 'us-east-1'),
             'credentials' => [
@@ -23,15 +30,26 @@ class EmailService
         ]);
     }
 
+    private function credentialsConfigured(): bool
+    {
+        return !empty(AppSetting::get('aws_key', ''))
+            && !empty(AppSetting::get('aws_secret', ''));
+    }
+
     public function sendCampaign(Campaign $campaign): array
     {
+        if (!$this->credentialsConfigured()) {
+            Log::error('SES credentials not configured', ['campaign_id' => $campaign->id]);
+            return ['success' => false, 'error' => 'Amazon SES credentials are not configured in Settings.', 'sent' => 0, 'failed' => 0, 'total' => 0];
+        }
+
         $recipients = $campaign->validRecipients()
             ->whereNotNull('email')
             ->where('email', '!=', '')
             ->get();
 
         if ($recipients->isEmpty()) {
-            return ['success' => false, 'error' => 'No valid recipients with email addresses'];
+            return ['success' => false, 'error' => 'No valid recipients with email addresses', 'sent' => 0, 'failed' => 0, 'total' => 0];
         }
 
         $fromName    = $campaign->email_from_name ?: AppSetting::get('ses_from_name', 'IntuDash');
@@ -39,46 +57,55 @@ class EmailService
         $replyTo     = $campaign->email_reply_to ?: $fromAddress;
 
         if (!$fromAddress) {
-            return ['success' => false, 'error' => 'No from address configured'];
+            return ['success' => false, 'error' => 'No from address configured', 'sent' => 0, 'failed' => 0, 'total' => 0];
         }
 
-        $client  = $this->client();
-        $sent    = 0;
-        $failed  = 0;
-        $errors  = [];
+        $client = $this->client();
+        $sent   = 0;
+        $failed = 0;
+        $errors = [];
 
         foreach ($recipients as $recipient) {
+            $log = EmailLog::create([
+                'campaign_id'           => $campaign->id,
+                'client_id'             => $campaign->client_id,
+                'campaign_recipient_id' => $recipient->id,
+                'recipient_email'       => $recipient->email,
+                'subject'               => $campaign->email_subject,
+                'provider'              => 'ses',
+                'status'                => 'pending',
+            ]);
+
             try {
                 $body = $this->personalise($campaign->email_body, $recipient);
 
-                $client->sendEmail([
+                $result = $client->sendEmail([
                     'Source' => "\"{$fromName}\" <{$fromAddress}>",
-                    'Destination' => [
-                        'ToAddresses' => [$recipient->email],
-                    ],
+                    'Destination' => ['ToAddresses' => [$recipient->email]],
                     'ReplyToAddresses' => [$replyTo],
                     'Message' => [
-                        'Subject' => [
-                            'Data'    => $campaign->email_subject,
-                            'Charset' => 'UTF-8',
-                        ],
+                        'Subject' => ['Data' => $campaign->email_subject, 'Charset' => 'UTF-8'],
                         'Body' => [
-                            'Html' => [
-                                'Data'    => $body,
-                                'Charset' => 'UTF-8',
-                            ],
-                            'Text' => [
-                                'Data'    => strip_tags($body),
-                                'Charset' => 'UTF-8',
-                            ],
+                            'Html' => ['Data' => $body, 'Charset' => 'UTF-8'],
+                            'Text' => ['Data' => strip_tags($body), 'Charset' => 'UTF-8'],
                         ],
                     ],
                 ]);
 
+                $log->update([
+                    'status'              => 'sent',
+                    'provider_message_id' => $result['MessageId'] ?? null,
+                    'sent_at'             => now(),
+                    'raw_response'        => ['MessageId' => $result['MessageId'] ?? null],
+                ]);
                 $sent++;
             } catch (AwsException $e) {
                 $failed++;
                 $errors[] = $e->getAwsErrorMessage();
+                $log->update([
+                    'status'         => 'failed',
+                    'failure_reason' => $e->getAwsErrorMessage(),
+                ]);
                 Log::error('SES send failed', [
                     'campaign_id' => $campaign->id,
                     'recipient'   => $recipient->email,
@@ -87,15 +114,64 @@ class EmailService
             }
         }
 
-        $campaign->update(['actual_email_recipients' => $sent]);
+        // Persist actual email cost/charge/profit (additive — SMS may have already written its share)
+        $emailCost   = round($sent * (float) $campaign->internal_cost_per_email, 2);
+        $emailCharge = round($sent * (float) $campaign->client_rate_per_email, 2);
+
+        $campaign->update([
+            'actual_email_recipients' => $sent,
+            'actual_cost'    => round((float) $campaign->actual_cost + $emailCost, 2),
+            'actual_charge'  => round((float) $campaign->actual_charge + $emailCharge, 2),
+            'actual_profit'  => round((float) $campaign->actual_profit + ($emailCharge - $emailCost), 2),
+        ]);
 
         return [
-            'success'    => $sent > 0,
-            'sent'       => $sent,
-            'failed'     => $failed,
-            'total'      => $recipients->count(),
-            'errors'     => array_unique($errors),
+            'success' => $sent > 0,
+            'sent'    => $sent,
+            'failed'  => $failed,
+            'total'   => $recipients->count(),
+            'errors'  => array_values(array_unique($errors)),
         ];
+    }
+
+    public function processNotification(array $payload): void
+    {
+        // SES publishes bounce/complaint/delivery notifications via SNS.
+        $type = $payload['notificationType'] ?? $payload['eventType'] ?? null;
+        $mail = $payload['mail'] ?? [];
+        $messageId = $mail['messageId'] ?? null;
+
+        if (!$messageId) {
+            Log::warning('SES notification missing messageId', $payload);
+            return;
+        }
+
+        $logs = EmailLog::where('provider_message_id', $messageId)->get();
+        if ($logs->isEmpty()) {
+            Log::warning('SES notification: no email log for message', ['message_id' => $messageId]);
+            return;
+        }
+
+        [$status, $reason, $delivered] = match (strtolower((string) $type)) {
+            'delivery'   => ['delivered', null, true],
+            'bounce'     => ['bounced', $payload['bounce']['bounceType'] ?? 'bounce', false],
+            'complaint'  => ['complained', $payload['complaint']['complaintFeedbackType'] ?? 'complaint', false],
+            'reject'     => ['rejected', $payload['reject']['reason'] ?? 'rejected', false],
+            default      => [null, null, false],
+        };
+
+        if (!$status) {
+            return;
+        }
+
+        foreach ($logs as $log) {
+            $log->update([
+                'status'         => $status,
+                'failure_reason' => $reason,
+                'delivered_at'   => $delivered ? now() : $log->delivered_at,
+                'raw_response'   => array_merge($log->raw_response ?? [], ['notification' => $payload]),
+            ]);
+        }
     }
 
     private function personalise(string $body, CampaignRecipient $recipient): string

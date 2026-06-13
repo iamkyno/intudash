@@ -6,6 +6,7 @@ use App\Models\Campaign;
 use App\Models\CampaignRecipient;
 use App\Services\PhoneNormalizer;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use League\Csv\Reader;
 
 class RecipientController extends Controller
@@ -25,27 +26,36 @@ class RecipientController extends Controller
 
     public function store(Request $request, Campaign $campaign)
     {
+        $type = $campaign->campaign_type ?? 'sms';
+        $needsPhone = in_array($type, ['sms', 'both']);
+        $needsEmail = $type === 'email';
+
         $request->validate([
-            'name' => 'nullable|string|max:255',
-            'phone' => 'required|string|max:20',
-            'email' => 'nullable|email|max:255',
+            'name'  => 'nullable|string|max:255',
+            'phone' => ($needsPhone ? 'required' : 'nullable') . '|string|max:20',
+            'email' => ($needsEmail ? 'required' : 'nullable') . '|email|max:255',
         ]);
 
-        $result = PhoneNormalizer::validateAndNormalize($request->phone);
+        $normalized = '';
+        $phone = $request->phone ?? '';
 
-        if (!$result['valid']) {
-            return back()->with('error', 'Invalid phone number: ' . $result['reason']);
+        if (!empty($phone)) {
+            $result = PhoneNormalizer::validateAndNormalize($phone);
+            if (!$result['valid'] && $needsPhone) {
+                return back()->with('error', 'Invalid phone number: ' . $result['reason']);
+            }
+            $normalized = $result['valid'] ? $result['normalized'] : '';
         }
 
-        $existing = $campaign->recipients()
-            ->where('phone_normalized', $result['normalized'])
+        $existing = $normalized && $campaign->recipients()
+            ->where('phone_normalized', $normalized)
             ->exists();
 
         CampaignRecipient::create([
             'campaign_id' => $campaign->id,
             'name' => $request->name,
-            'phone' => $request->phone,
-            'phone_normalized' => $result['normalized'],
+            'phone' => $phone,
+            'phone_normalized' => $normalized,
             'email' => $request->email,
             'status' => $existing ? 'duplicate' : 'valid',
             'invalid_reason' => null,
@@ -66,6 +76,10 @@ class RecipientController extends Controller
             'csv_file' => 'required|file|mimes:csv,txt|max:10240',
         ]);
 
+        $type       = $campaign->campaign_type ?? 'sms';
+        $needsPhone = in_array($type, ['sms', 'both']);
+        $needsEmail = in_array($type, ['email', 'both']);
+
         $file = $request->file('csv_file');
         $csv = Reader::createFromPath($file->getPathname(), 'r');
         $csv->setHeaderOffset(0);
@@ -74,76 +88,92 @@ class RecipientController extends Controller
         $existingNumbers = $campaign->recipients()
             ->where('status', 'valid')
             ->pluck('phone_normalized')
+            ->filter()
             ->toArray();
 
-        $newNumbers = [];
+        $seenNumbers = [];
+        $rows = [];
+        $now = now();
 
         foreach ($csv->getRecords() as $record) {
             $stats['total']++;
 
+            $name  = $record['name'] ?? $record['Name'] ?? null;
+            $email = trim($record['email'] ?? $record['Email'] ?? '');
             $phone = trim($record['phone'] ?? $record['Phone'] ?? $record['mobile'] ?? '');
 
-            if (empty($phone)) {
+            $base = [
+                'campaign_id'      => $campaign->id,
+                'name'             => $name,
+                'phone'            => $phone,
+                'phone_normalized' => '',
+                'email'            => $email ?: null,
+                'invalid_reason'   => null,
+                'created_at'       => $now,
+                'updated_at'       => $now,
+            ];
+
+            // Determine validity by campaign channel.
+            $hasUsablePhone = false;
+            $normalized = '';
+            if (!empty($phone)) {
+                $result = PhoneNormalizer::validateAndNormalize($phone);
+                $hasUsablePhone = $result['valid'];
+                $normalized = $result['valid'] ? $result['normalized'] : '';
+                $base['phone_normalized'] = $normalized ?: $phone;
+                if (!$result['valid']) {
+                    $base['invalid_reason'] = $result['reason'];
+                }
+            }
+            $hasUsableEmail = !empty($email) && filter_var($email, FILTER_VALIDATE_EMAIL);
+
+            // A recipient is usable if it satisfies the channel requirement.
+            $usable = match ($type) {
+                'sms'   => $hasUsablePhone,
+                'email' => $hasUsableEmail,
+                'both'  => $hasUsablePhone || $hasUsableEmail,
+                default => $hasUsablePhone,
+            };
+
+            if (!$usable) {
                 $stats['invalid']++;
-                CampaignRecipient::create([
-                    'campaign_id' => $campaign->id,
-                    'name' => $record['name'] ?? $record['Name'] ?? null,
-                    'phone' => '',
-                    'phone_normalized' => '',
-                    'email' => $record['email'] ?? null,
-                    'status' => 'invalid',
-                    'invalid_reason' => 'Missing phone number',
-                ]);
+                $base['status'] = 'invalid';
+                if (!$base['invalid_reason']) {
+                    $base['invalid_reason'] = $needsEmail && !$needsPhone
+                        ? 'Missing or invalid email address'
+                        : 'Missing or invalid phone number';
+                }
+                $rows[] = $base;
                 continue;
             }
 
-            $result = PhoneNormalizer::validateAndNormalize($phone);
-
-            if (!$result['valid']) {
-                $stats['invalid']++;
-                CampaignRecipient::create([
-                    'campaign_id' => $campaign->id,
-                    'name' => $record['name'] ?? $record['Name'] ?? null,
-                    'phone' => $phone,
-                    'phone_normalized' => $phone,
-                    'email' => $record['email'] ?? null,
-                    'status' => 'invalid',
-                    'invalid_reason' => $result['reason'],
-                ]);
-                continue;
-            }
-
-            $normalized = $result['normalized'];
-
-            if (in_array($normalized, $existingNumbers) || in_array($normalized, $newNumbers)) {
+            // Duplicate detection (phone-based when a phone exists, else email-based).
+            $dupeKey = $normalized ?: strtolower($email);
+            if ($dupeKey && (in_array($dupeKey, $existingNumbers) || in_array($dupeKey, $seenNumbers))) {
                 $stats['duplicate']++;
-                CampaignRecipient::create([
-                    'campaign_id' => $campaign->id,
-                    'name' => $record['name'] ?? $record['Name'] ?? null,
-                    'phone' => $phone,
-                    'phone_normalized' => $normalized,
-                    'email' => $record['email'] ?? null,
-                    'status' => 'duplicate',
-                ]);
+                $base['status'] = 'duplicate';
+                $rows[] = $base;
                 continue;
             }
 
-            $newNumbers[] = $normalized;
+            if ($dupeKey) {
+                $seenNumbers[] = $dupeKey;
+            }
             $stats['valid']++;
-
-            CampaignRecipient::create([
-                'campaign_id' => $campaign->id,
-                'name' => $record['name'] ?? $record['Name'] ?? null,
-                'phone' => $phone,
-                'phone_normalized' => $normalized,
-                'email' => $record['email'] ?? null,
-                'status' => 'valid',
-            ]);
+            $base['status'] = 'valid';
+            $rows[] = $base;
         }
 
-        if ($stats['valid'] > 0 && in_array($campaign->status, ['draft'])) {
-            $campaign->update(['status' => 'recipients_uploaded']);
-        }
+        // Batched, atomic insert.
+        DB::transaction(function () use ($rows, $campaign, $stats) {
+            foreach (array_chunk($rows, 500) as $chunk) {
+                CampaignRecipient::insert($chunk);
+            }
+
+            if ($stats['valid'] > 0 && $campaign->status === 'draft') {
+                $campaign->update(['status' => 'recipients_uploaded']);
+            }
+        });
 
         $campaign->recalculateEstimates();
 
@@ -161,9 +191,9 @@ class RecipientController extends Controller
 
         $callback = function () use ($records) {
             $h = fopen('php://output', 'w');
-            fputcsv($h, ['Name', 'Phone', 'Status', 'Reason']);
+            fputcsv($h, ['Name', 'Phone', 'Email', 'Status', 'Reason']);
             foreach ($records as $r) {
-                fputcsv($h, [$r->name, $r->phone, $r->status, $r->invalid_reason ?? '']);
+                fputcsv($h, [$r->name, $r->phone, $r->email ?? '', $r->status, $r->invalid_reason ?? '']);
             }
             fclose($h);
         };
@@ -197,6 +227,9 @@ class RecipientController extends Controller
 
     public function destroy(Campaign $campaign, CampaignRecipient $recipient)
     {
+        // Ensure the recipient actually belongs to this campaign (defence-in-depth).
+        abort_if($recipient->campaign_id !== $campaign->id, 404);
+
         $recipient->delete();
         $campaign->recalculateEstimates();
         return back()->with('success', 'Recipient removed.');

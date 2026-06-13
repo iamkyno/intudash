@@ -33,6 +33,8 @@ class Campaign extends Model
         'admin_override_payment' => 'boolean',
         'internal_cost_per_sms' => 'decimal:4',
         'client_rate_per_sms' => 'decimal:4',
+        'internal_cost_per_email' => 'decimal:6',
+        'client_rate_per_email' => 'decimal:6',
         'archived_at' => 'datetime',
     ];
 
@@ -64,6 +66,11 @@ class Campaign extends Model
     public function smsLogs()
     {
         return $this->hasMany(SmsLog::class);
+    }
+
+    public function emailLogs()
+    {
+        return $this->hasMany(EmailLog::class);
     }
 
     public function getStatusLabelAttribute(): string
@@ -140,11 +147,27 @@ class Campaign extends Model
 
     public function recalculateEstimates(): void
     {
-        $recipients = $this->validRecipients()->count();
-        $this->estimated_recipients = $recipients;
-        $this->estimated_cost = round($recipients * $this->sms_segments * $this->internal_cost_per_sms, 2);
-        $this->estimated_charge = round($recipients * $this->sms_segments * $this->client_rate_per_sms, 2);
-        $this->estimated_profit = round($this->estimated_charge - $this->estimated_cost, 2);
+        $type = $this->campaign_type ?? 'sms';
+        $cost = 0;
+        $charge = 0;
+
+        if (in_array($type, ['sms', 'both'])) {
+            $smsRecipients = $this->validRecipients()->count();
+            $this->estimated_recipients = $smsRecipients;
+            $cost   += $smsRecipients * $this->sms_segments * (float) $this->internal_cost_per_sms;
+            $charge += $smsRecipients * $this->sms_segments * (float) $this->client_rate_per_sms;
+        }
+
+        if (in_array($type, ['email', 'both'])) {
+            $emailRecipients = $this->validRecipients()->whereNotNull('email')->where('email', '!=', '')->count();
+            $this->estimated_email_recipients = $emailRecipients;
+            $cost   += $emailRecipients * (float) $this->internal_cost_per_email;
+            $charge += $emailRecipients * (float) $this->client_rate_per_email;
+        }
+
+        $this->estimated_cost = round($cost, 2);
+        $this->estimated_charge = round($charge, 2);
+        $this->estimated_profit = round($charge - $cost, 2);
         $this->save();
     }
 }
