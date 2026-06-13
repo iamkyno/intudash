@@ -129,7 +129,17 @@ class CampaignController extends Controller
             (($deliveryStats['undelivered'] + $deliveryStats['failed'] + $deliveryStats['expired'] + $deliveryStats['no_route']) / $total) * 100, 1
         );
 
-        return view('campaigns.show', compact('campaign', 'deliveryStats'));
+        $emailStats = [
+            'total'      => $campaign->emailLogs()->count(),
+            'sent'       => $campaign->emailLogs()->where('status', 'sent')->count(),
+            'delivered'  => $campaign->emailLogs()->where('status', 'delivered')->count(),
+            'bounced'    => $campaign->emailLogs()->where('status', 'bounced')->count(),
+            'complained' => $campaign->emailLogs()->where('status', 'complained')->count(),
+            'rejected'   => $campaign->emailLogs()->where('status', 'rejected')->count(),
+            'failed'     => $campaign->emailLogs()->where('status', 'failed')->count(),
+        ];
+
+        return view('campaigns.show', compact('campaign', 'deliveryStats', 'emailStats'));
     }
 
     public function edit(Campaign $campaign)

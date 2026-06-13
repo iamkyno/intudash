@@ -129,6 +129,36 @@ $siblings = \App\Models\Campaign::where('campaign_group_id', $campaign->campaign
             </div>
         </div>
         @endif
+
+        {{-- Email delivery stats --}}
+        @if(($emailStats['total'] ?? 0) > 0)
+        <div class="card">
+            <div class="card-header">
+                <span class="card-header-title"><i class="bi bi-envelope"></i> Email Delivery</span>
+                <span style="font-size:12px;color:var(--text-tertiary);">{{ $emailStats['total'] }} emails</span>
+            </div>
+            <div class="card-body">
+                <div class="row g-2 text-center">
+                    @php
+                    $emailCells = [
+                        'delivered'  => ['success', 'Delivered'],
+                        'sent'       => ['warning', 'Sent'],
+                        'bounced'    => ['danger',  'Bounced'],
+                        'complained' => ['danger',  'Complaints'],
+                        'rejected'   => ['danger',  'Rejected'],
+                        'failed'     => ['danger',  'Failed'],
+                    ];
+                    @endphp
+                    @foreach($emailCells as $key => [$color, $label])
+                    <div class="col-4">
+                        <div style="font-size:22px;font-weight:600;color:var(--color-{{ $color }});">{{ $emailStats[$key] }}</div>
+                        <div style="font-size:11px;color:var(--text-tertiary);text-transform:uppercase;letter-spacing:0.05em;">{{ $label }}</div>
+                    </div>
+                    @endforeach
+                </div>
+            </div>
+        </div>
+        @endif
     </div>
 
     <div class="col-md-4 d-flex flex-column gap-3">
