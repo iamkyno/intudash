@@ -589,6 +589,14 @@
             <i class="bi bi-plus-circle"></i> New Campaign
         </a>
 
+        <div class="nav-section-label">Reminders</div>
+        <a href="{{ route('reminders.index') }}" class="sidebar-link {{ request()->routeIs('reminders.*') ? 'active' : '' }}">
+            <i class="bi bi-bell"></i> Reminders
+        </a>
+        <a href="{{ route('reminder-templates.index') }}" class="sidebar-link {{ request()->routeIs('reminder-templates.*') ? 'active' : '' }}">
+            <i class="bi bi-chat-square-text"></i> Templates
+        </a>
+
         <div class="nav-section-label">Billing</div>
         <a href="{{ route('quotes.index') }}" class="sidebar-link {{ request()->routeIs('quotes.*') ? 'active' : '' }}">
             <i class="bi bi-file-earmark-text"></i> Quotes

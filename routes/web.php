@@ -7,6 +7,8 @@ use App\Http\Controllers\InvoiceController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\QuoteController;
 use App\Http\Controllers\RecipientController;
+use App\Http\Controllers\ReminderController;
+use App\Http\Controllers\ReminderTemplateController;
 use App\Http\Controllers\SettingsController;
 use App\Http\Controllers\WebhookController;
 use Illuminate\Support\Facades\Route;
@@ -73,6 +75,20 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('/quotes/{quote}/decline', [QuoteController::class, 'decline'])->name('quotes.decline');
     Route::patch('/quotes/{quote}/status', [QuoteController::class, 'updateStatus'])->name('quotes.update-status');
     Route::get('/quotes/{quote}/pdf', [QuoteController::class, 'pdf'])->name('quotes.pdf');
+
+    // Reminder templates
+    Route::resource('reminder-templates', ReminderTemplateController::class)->except(['show']);
+
+    // Reminders
+    Route::get('reminders', [ReminderController::class, 'index'])->name('reminders.index');
+    Route::get('reminders/create', [ReminderController::class, 'create'])->name('reminders.create');
+    Route::post('reminders', [ReminderController::class, 'store'])->name('reminders.store');
+    Route::post('reminders/upload', [ReminderController::class, 'upload'])->name('reminders.upload');
+    Route::post('reminders/{reminder}/cancel', [ReminderController::class, 'cancel'])->name('reminders.cancel');
+    Route::delete('reminders/{reminder}', [ReminderController::class, 'destroy'])->name('reminders.destroy');
+
+    // Client API token
+    Route::post('clients/{client}/api-token', [ClientController::class, 'regenerateApiToken'])->name('clients.api-token');
 
     // Settings
     Route::get('settings', [SettingsController::class, 'index'])->name('settings.index');

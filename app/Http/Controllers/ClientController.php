@@ -108,4 +108,15 @@ class ClientController extends Controller
         return redirect()->route('clients.index')
             ->with('success', 'Client deleted.');
     }
+
+    public function regenerateApiToken(Client $client)
+    {
+        $plain = $client->generateApiToken();
+        AuditLogService::log('client_api_token_generated', $client);
+
+        // Show the plaintext token once via flash — it cannot be retrieved later.
+        return back()
+            ->with('success', 'New API token generated. Copy it now — it will not be shown again.')
+            ->with('new_api_token', $plain);
+    }
 }

@@ -91,6 +91,49 @@
                 @endif
             </div>
         </div>
+
+        {{-- Reminder API access --}}
+        <div class="card mt-3">
+            <div class="card-header"><i class="bi bi-key me-1"></i>Reminder API Token</div>
+            <div class="card-body">
+                @if(session('new_api_token'))
+                    <div class="alert alert-warning py-2 px-2 small mb-2">
+                        <strong>Copy this token now — it won't be shown again:</strong>
+                        <div class="input-group input-group-sm mt-1">
+                            <input type="text" class="form-control form-control-sm" readonly value="{{ session('new_api_token') }}" id="newToken">
+                            <button type="button" class="btn btn-outline-secondary btn-sm" onclick="navigator.clipboard.writeText(document.getElementById('newToken').value)">
+                                <i class="bi bi-clipboard"></i>
+                            </button>
+                        </div>
+                    </div>
+                @endif
+
+                @if($client->api_token)
+                    <p class="small mb-2" style="color:var(--text-secondary);">
+                        Token active <span class="text-muted">(ends …{{ $client->api_token_last_four }})</span>,
+                        generated {{ $client->api_token_generated_at?->format('d M Y') }}.
+                    </p>
+                @else
+                    <p class="small mb-2" style="color:var(--text-secondary);">No API token yet. Generate one to let this client push reminders via the API.</p>
+                @endif
+
+                <p class="small mb-1" style="color:var(--text-tertiary);">Endpoint:</p>
+                <div class="input-group input-group-sm mb-2">
+                    <input type="text" class="form-control form-control-sm" readonly value="{{ url('/api/v1/reminders') }}" id="apiUrl">
+                    <button type="button" class="btn btn-outline-secondary btn-sm" onclick="navigator.clipboard.writeText(document.getElementById('apiUrl').value)">
+                        <i class="bi bi-clipboard"></i>
+                    </button>
+                </div>
+
+                <form action="{{ route('clients.api-token', $client) }}" method="POST"
+                      onsubmit="return confirm('{{ $client->api_token ? 'Regenerate token? The old one stops working immediately.' : 'Generate an API token?' }}')">
+                    @csrf
+                    <button class="btn btn-ghost btn-sm">
+                        <i class="bi bi-arrow-repeat"></i> {{ $client->api_token ? 'Regenerate Token' : 'Generate Token' }}
+                    </button>
+                </form>
+            </div>
+        </div>
     </div>
     <div class="col-md-8">
         <div class="card mb-3">
