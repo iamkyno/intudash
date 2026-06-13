@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\CampaignController;
 use App\Http\Controllers\ClientController;
+use App\Http\Controllers\ClientDataSourceController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\InvoiceController;
 use App\Http\Controllers\ProfileController;
@@ -89,6 +90,16 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     // Client API token
     Route::post('clients/{client}/api-token', [ClientController::class, 'regenerateApiToken'])->name('clients.api-token');
+
+    // Client data sources (external DB connections)
+    Route::get('clients/{client}/data-sources', [ClientDataSourceController::class, 'index'])->name('clients.data-sources.index');
+    Route::get('clients/{client}/data-sources/create', [ClientDataSourceController::class, 'create'])->name('clients.data-sources.create');
+    Route::post('clients/{client}/data-sources', [ClientDataSourceController::class, 'store'])->name('clients.data-sources.store');
+    Route::get('clients/{client}/data-sources/{dataSource}/edit', [ClientDataSourceController::class, 'edit'])->name('clients.data-sources.edit');
+    Route::put('clients/{client}/data-sources/{dataSource}', [ClientDataSourceController::class, 'update'])->name('clients.data-sources.update');
+    Route::delete('clients/{client}/data-sources/{dataSource}', [ClientDataSourceController::class, 'destroy'])->name('clients.data-sources.destroy');
+    Route::post('clients/{client}/data-sources/{dataSource}/preview', [ClientDataSourceController::class, 'preview'])->name('clients.data-sources.preview');
+    Route::post('clients/{client}/data-sources/{dataSource}/import', [ClientDataSourceController::class, 'import'])->name('clients.data-sources.import');
 
     // Settings
     Route::get('settings', [SettingsController::class, 'index'])->name('settings.index');

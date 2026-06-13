@@ -30,6 +30,13 @@
     </div>
 </div>
 
+@if(session('success'))
+    <div class="alert alert-success py-2 mb-3">{{ session('success') }}</div>
+@endif
+@if(session('error'))
+    <div class="alert alert-danger py-2 mb-3">{{ session('error') }}</div>
+@endif
+
 <div class="row g-3 mb-3">
     <div class="col-md-6">
         <div class="card">
@@ -71,6 +78,42 @@
             </div>
         </div>
     </div>
+
+    @if($dataSources->isNotEmpty())
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header"><i class="bi bi-database me-2"></i>Import from Database</div>
+            <div class="card-body">
+                <p class="small mb-3" style="color:var(--text-secondary);">
+                    Pull recipients directly from a connected database. Phone numbers are validated and normalised automatically.
+                </p>
+                <div class="row g-2">
+                    @foreach($dataSources as $ds)
+                    <div class="col-md-4">
+                        <div style="border:1px solid var(--surface-border);border-radius:8px;padding:12px;">
+                            <div class="d-flex justify-content-between align-items-start">
+                                <div>
+                                    <div style="font-size:13px;font-weight:600;color:var(--text-primary);">{{ $ds->name }}</div>
+                                    <div style="font-size:11px;color:var(--text-tertiary);">{{ strtoupper($ds->driver) }} &bull; {{ $ds->table_or_view ?: 'custom query' }}</div>
+                                </div>
+                                <form method="POST" action="{{ route('clients.data-sources.import', [$campaign->client, $ds]) }}"
+                                      onsubmit="return confirm('Import all records from {{ addslashes($ds->name) }} into this campaign?')">
+                                    @csrf
+                                    <input type="hidden" name="campaign_id" value="{{ $campaign->id }}">
+                                    <button class="btn btn-primary btn-sm">Import</button>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                    @endforeach
+                </div>
+                <p class="small mt-3 mb-0" style="color:var(--text-tertiary);">
+                    Manage connections: <a href="{{ route('clients.data-sources.index', $campaign->client) }}">Data Sources</a>
+                </p>
+            </div>
+        </div>
+    </div>
+    @endif
 </div>
 
 <div class="d-flex justify-content-between align-items-center mb-2">

@@ -45,6 +45,20 @@
         <div class="card mt-3">
             <div class="card-header"><i class="bi bi-calculator me-1"></i>Cost Estimator</div>
             <div class="card-body" id="cost-estimator">
+                {{-- Quick recipient count override — updates the form fields too --}}
+                <div id="est-quick-sms" class="mb-2">
+                    <label class="form-label small mb-1" style="color:var(--text-secondary);">SMS Recipients</label>
+                    <input type="number" id="est-quick-sms-input" min="0" placeholder="Enter count…"
+                        class="form-control form-control-sm"
+                        oninput="document.getElementById('estimated_recipients').value=this.value;updateEstimator()">
+                </div>
+                <div id="est-quick-email" class="mb-2" style="display:none;">
+                    <label class="form-label small mb-1" style="color:var(--text-secondary);">Email Recipients</label>
+                    <input type="number" id="est-quick-email-input" min="0" placeholder="Enter count…"
+                        class="form-control form-control-sm"
+                        oninput="document.getElementById('estimated_email_recipients').value=this.value;updateEstimator()">
+                </div>
+                <hr class="my-2">
                 {{-- SMS rows --}}
                 <div id="est-sms-section">
                     <div class="d-flex justify-content-between small mb-1">
@@ -153,6 +167,8 @@ function updateEstimator() {
     document.getElementById('est-sms-cost-section').style.display  = showSms   ? '' : 'none';
     document.getElementById('est-email-cost-section').style.display= showEmail ? '' : 'none';
     document.getElementById('sms-counter-card').style.display      = showSms   ? '' : 'none';
+    document.getElementById('est-quick-sms').style.display         = showSms   ? '' : 'none';
+    document.getElementById('est-quick-email').style.display       = showEmail ? '' : 'none';
 
     // Runs row
     const runsRow = document.getElementById('est-runs-row');
@@ -224,7 +240,16 @@ const ESTIMATOR_FIELDS = new Set([
     'estimated_email_recipients','internal_cost_per_email','client_rate_per_email',
 ]);
 document.addEventListener('input', e => {
-    if (ESTIMATOR_FIELDS.has(e.target.id || e.target.name)) updateEstimator();
+    const id = e.target.id || e.target.name;
+    if (id === 'estimated_recipients') {
+        const q = document.getElementById('est-quick-sms-input');
+        if (q && document.activeElement !== q) q.value = e.target.value;
+    }
+    if (id === 'estimated_email_recipients') {
+        const q = document.getElementById('est-quick-email-input');
+        if (q && document.activeElement !== q) q.value = e.target.value;
+    }
+    if (ESTIMATOR_FIELDS.has(id)) updateEstimator();
 });
 document.querySelectorAll('input[name="campaign_type"]').forEach(r => r.addEventListener('change', updateEstimator));
 document.getElementById('repeatToggle')?.addEventListener('change', updateEstimator);

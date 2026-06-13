@@ -134,6 +134,32 @@
                 </form>
             </div>
         </div>
+
+        {{-- Data sources --}}
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <span><i class="bi bi-database me-1"></i>Data Sources</span>
+                <a href="{{ route('clients.data-sources.create', $client) }}" class="btn btn-ghost btn-sm">
+                    <i class="bi bi-plus-lg"></i>
+                </a>
+            </div>
+            <div class="card-body">
+                @php $sources = $client->dataSources()->where('active', true)->get(); @endphp
+                @if($sources->isEmpty())
+                    <p class="small mb-2" style="color:var(--text-secondary);">No database connections yet.</p>
+                @else
+                    @foreach($sources as $ds)
+                    <div class="d-flex justify-content-between align-items-center mb-1" style="font-size:13px;">
+                        <span>{{ $ds->name }}</span>
+                        <span class="badge bg-secondary">{{ strtoupper($ds->driver) }}</span>
+                    </div>
+                    @endforeach
+                @endif
+                <a href="{{ route('clients.data-sources.index', $client) }}" class="btn btn-ghost btn-sm mt-1 w-100">
+                    Manage Data Sources
+                </a>
+            </div>
+        </div>
     </div>
     <div class="col-md-8">
         <div class="card mb-3">

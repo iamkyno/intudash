@@ -21,7 +21,11 @@ class RecipientController extends Controller
             'invalid' => $campaign->recipients()->where('status', 'invalid')->count(),
         ];
 
-        return view('campaigns.recipients', compact('campaign', 'recipients', 'stats'));
+        $dataSources = $campaign->client
+            ? $campaign->client->dataSources()->where('active', true)->get()
+            : collect();
+
+        return view('campaigns.recipients', compact('campaign', 'recipients', 'stats', 'dataSources'));
     }
 
     public function store(Request $request, Campaign $campaign)

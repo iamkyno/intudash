@@ -169,15 +169,22 @@ $siblings = \App\Models\Campaign::where('campaign_group_id', $campaign->campaign
             </div>
             <div class="card-body">
                 @php
-                $rows = [
-                    ['SMS Segments', $campaign->sms_segments],
-                    ['Recipients (est.)', number_format($campaign->estimated_recipients)],
-                    ['Recipients (actual)', number_format($campaign->actual_recipients)],
-                    ['Internal Cost / SMS', 'R '.$campaign->internal_cost_per_sms],
-                    ['Client Rate / SMS', 'R '.$campaign->client_rate_per_sms],
-                    ['Est. Cost', 'R '.number_format($campaign->estimated_cost, 2)],
-                    ['Est. Charge', 'R '.number_format($campaign->estimated_charge, 2)],
-                ];
+                $rows = [];
+                $type = $campaign->campaign_type ?? 'sms';
+                if (in_array($type, ['sms', 'both'])) {
+                    $rows[] = ['SMS Segments', $campaign->sms_segments];
+                    $rows[] = ['SMS Recipients (est.)', number_format($campaign->estimated_recipients)];
+                    $rows[] = ['SMS Recipients (actual)', number_format($campaign->actual_recipients)];
+                    $rows[] = ['Internal Cost / SMS', 'R '.$campaign->internal_cost_per_sms];
+                    $rows[] = ['Client Rate / SMS', 'R '.$campaign->client_rate_per_sms];
+                }
+                if (in_array($type, ['email', 'both'])) {
+                    $rows[] = ['Email Recipients (actual *)', number_format($campaign->actual_email_recipients ?? 0)];
+                    $rows[] = ['Internal Cost / Email', 'R '.number_format($campaign->internal_cost_per_email, 6)];
+                    $rows[] = ['Client Rate / Email', 'R '.number_format($campaign->client_rate_per_email, 6)];
+                }
+                $rows[] = ['Est. Cost', 'R '.number_format($campaign->estimated_cost, 2)];
+                $rows[] = ['Est. Charge', 'R '.number_format($campaign->estimated_charge, 2)];
                 @endphp
                 @foreach($rows as [$label, $val])
                 <div class="d-flex justify-content-between mb-2" style="font-size:13px;">
@@ -195,6 +202,9 @@ $siblings = \App\Models\Campaign::where('campaign_group_id', $campaign->campaign
                         <span style="color:var(--text-secondary);">Actual Profit</span>
                         <span style="color:var(--color-success);">R {{ number_format($campaign->actual_profit, 2) }}</span>
                     </div>
+                @endif
+                @if(in_array($campaign->campaign_type ?? 'sms', ['email','both']))
+                    <p style="font-size:11px;color:var(--text-tertiary);margin-top:8px;margin-bottom:0;">* Email actuals include failed attempts — resends will be billed separately.</p>
                 @endif
             </div>
         </div>

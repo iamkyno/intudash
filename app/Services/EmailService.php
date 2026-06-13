@@ -114,12 +114,13 @@ class EmailService
             }
         }
 
-        // Persist actual email cost/charge/profit (additive — SMS may have already written its share)
-        $emailCost   = round($sent * (float) $campaign->internal_cost_per_email, 2);
-        $emailCharge = round($sent * (float) $campaign->client_rate_per_email, 2);
+        // Bill on all attempted recipients — failed sends still incur cost and will be rebilled on resend.
+        $attempted   = $sent + $failed;
+        $emailCost   = round($attempted * (float) $campaign->internal_cost_per_email, 2);
+        $emailCharge = round($attempted * (float) $campaign->client_rate_per_email, 2);
 
         $campaign->update([
-            'actual_email_recipients' => $sent,
+            'actual_email_recipients' => $attempted,
             'actual_cost'    => round((float) $campaign->actual_cost + $emailCost, 2),
             'actual_charge'  => round((float) $campaign->actual_charge + $emailCharge, 2),
             'actual_profit'  => round((float) $campaign->actual_profit + ($emailCharge - $emailCost), 2),

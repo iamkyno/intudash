@@ -29,6 +29,11 @@ class Client extends Model
         return $query->where('status', 'active');
     }
 
+    public function dataSources()
+    {
+        return $this->hasMany(ClientDataSource::class);
+    }
+
     public function reminderTemplates()
     {
         return $this->hasMany(ReminderTemplate::class);
