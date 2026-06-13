@@ -10,3 +10,6 @@ Artisan::command('inspire', function () {
 
 // Run every minute to dispatch due campaigns
 Schedule::command('campaigns:send-scheduled')->everyMinute()->withoutOverlapping();
+
+// Run every minute to dispatch due booking reminders
+Schedule::command('reminders:dispatch')->everyMinute()->withoutOverlapping();

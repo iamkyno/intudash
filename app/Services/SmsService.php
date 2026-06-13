@@ -18,6 +18,29 @@ class SmsService
         $this->provider = $provider ?? new SmsPortalProvider();
     }
 
+    /**
+     * Send a single transactional SMS (used by the reminder engine).
+     */
+    public function sendOne(string $phone, string $message, ?string $sender = null): array
+    {
+        $result = $this->provider->sendBulk(
+            [['phone' => $phone]],
+            $message,
+            $sender
+        );
+
+        $messageId = null;
+        if (!empty($result['results'][0]['messageId'])) {
+            $messageId = $result['results'][0]['messageId'];
+        }
+
+        return [
+            'success'    => $result['success'] ?? false,
+            'message_id' => $messageId,
+            'error'      => $result['error'] ?? null,
+        ];
+    }
+
     public function sendCampaign(Campaign $campaign): array
     {
         $recipients = $campaign->validRecipients()->get();

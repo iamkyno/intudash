@@ -134,6 +134,50 @@ class EmailService
         ];
     }
 
+    /**
+     * Send a single transactional email (used by the reminder engine).
+     */
+    public function sendOne(
+        string $toEmail,
+        string $subject,
+        string $htmlBody,
+        ?string $fromName = null,
+        ?string $fromAddress = null,
+        ?string $replyTo = null
+    ): array {
+        if (!$this->credentialsConfigured()) {
+            return ['success' => false, 'message_id' => null, 'error' => 'SES credentials not configured'];
+        }
+
+        $fromName    = $fromName ?: AppSetting::get('ses_from_name', 'IntuDash');
+        $fromAddress = $fromAddress ?: AppSetting::get('ses_from_email', '');
+        $replyTo     = $replyTo ?: $fromAddress;
+
+        if (!$fromAddress) {
+            return ['success' => false, 'message_id' => null, 'error' => 'No from address configured'];
+        }
+
+        try {
+            $result = $this->client()->sendEmail([
+                'Source' => "\"{$fromName}\" <{$fromAddress}>",
+                'Destination' => ['ToAddresses' => [$toEmail]],
+                'ReplyToAddresses' => [$replyTo],
+                'Message' => [
+                    'Subject' => ['Data' => $subject, 'Charset' => 'UTF-8'],
+                    'Body' => [
+                        'Html' => ['Data' => $htmlBody, 'Charset' => 'UTF-8'],
+                        'Text' => ['Data' => strip_tags($htmlBody), 'Charset' => 'UTF-8'],
+                    ],
+                ],
+            ]);
+
+            return ['success' => true, 'message_id' => $result['MessageId'] ?? null, 'error' => null];
+        } catch (AwsException $e) {
+            Log::error('SES sendOne failed', ['recipient' => $toEmail, 'error' => $e->getAwsErrorMessage()]);
+            return ['success' => false, 'message_id' => null, 'error' => $e->getAwsErrorMessage()];
+        }
+    }
+
     public function processNotification(array $payload): void
     {
         // SES publishes bounce/complaint/delivery notifications via SNS.
