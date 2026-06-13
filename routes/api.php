@@ -1,4 +1,5 @@
+<?php
 
 use Illuminate\Support\Facades\Route;
 
-Route::post('webhooks/smsportal', [App\Http\Controllers\WebhookController::class, 'smsportal']);
+// Webhook endpoints are defined in routes/web.php (secret-protected + throttled).

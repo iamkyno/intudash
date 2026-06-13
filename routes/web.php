@@ -13,9 +13,13 @@ use Illuminate\Support\Facades\Route;
 
 require __DIR__ . '/auth.php';
 
-// Webhook — no auth
-Route::post('webhooks/smsportal', [WebhookController::class, 'smsportal'])
-    ->name('webhooks.smsportal');
+// Webhooks — no session auth; protected by shared secret + rate limiting.
+Route::middleware('throttle:webhooks')->group(function () {
+    Route::post('webhooks/smsportal', [WebhookController::class, 'smsportal'])
+        ->name('webhooks.smsportal');
+    Route::post('webhooks/ses', [WebhookController::class, 'ses'])
+        ->name('webhooks.ses');
+});
 
 Route::get('/', function () {
     return redirect()->route('dashboard');

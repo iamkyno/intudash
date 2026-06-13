@@ -105,13 +105,13 @@
                     <div class="row g-3">
                         <div class="col-md-6">
                             <label class="form-label">AWS Access Key</label>
-                            <input type="text" name="aws_key" class="form-control"
-                                value="{{ $settings['aws_key'] ?? '' }}" placeholder="AKIA…">
+                            <input type="password" name="aws_key" class="form-control" autocomplete="off"
+                                value="" placeholder="{{ !empty($settings['aws_key_set']) ? '•••••••• configured — leave blank to keep' : 'AKIA…' }}">
                         </div>
                         <div class="col-md-6">
                             <label class="form-label">AWS Secret Key</label>
-                            <input type="password" name="aws_secret" class="form-control"
-                                value="{{ $settings['aws_secret'] ?? '' }}" placeholder="Enter to update">
+                            <input type="password" name="aws_secret" class="form-control" autocomplete="off"
+                                value="" placeholder="{{ !empty($settings['aws_secret_set']) ? '•••••••• configured — leave blank to keep' : 'Enter secret key' }}">
                         </div>
                         <div class="col-md-4">
                             <label class="form-label">AWS Region</label>
@@ -165,9 +165,9 @@
                         </div>
                         <div class="col-md-6">
                             <label class="form-label">SMSPortal API Secret</label>
-                            <input type="password" name="smsportal_api_secret" class="form-control"
-                                value="{{ $settings['smsportal_api_secret'] ?? '' }}"
-                                placeholder="Enter to update">
+                            <input type="password" name="smsportal_api_secret" class="form-control" autocomplete="off"
+                                value=""
+                                placeholder="{{ !empty($settings['smsportal_api_secret_set']) ? '•••••••• configured — leave blank to keep' : 'Enter to update' }}">
                         </div>
                         <div class="col-md-4">
                             <label class="form-label">Mode</label>
@@ -182,21 +182,40 @@
                 </div>
             </div>
 
+            <div class="card mb-3">
+                <div class="card-header"><i class="bi bi-shield-lock me-2"></i>Webhook Security</div>
+                <div class="card-body">
+                    <label class="form-label">Webhook Secret</label>
+                    <input type="password" name="webhook_secret" class="form-control" autocomplete="off"
+                        value="" placeholder="{{ !empty($settings['webhook_secret_set']) ? '•••••••• configured — leave blank to keep' : 'Set a shared secret' }}">
+                    <small class="text-muted">Incoming webhooks must supply this via an <code>X-Webhook-Secret</code> header or <code>?secret=</code> query param. Leave unset to accept unauthenticated callbacks (not recommended).</small>
+                </div>
+            </div>
+
             <button type="submit" class="btn btn-primary">Save Settings</button>
         </form>
     </div>
     <div class="col-md-4">
         <div class="card">
-            <div class="card-header"><i class="bi bi-link-45deg me-2"></i>Webhook URL</div>
+            <div class="card-header"><i class="bi bi-link-45deg me-2"></i>Webhook URLs</div>
             <div class="card-body">
-                <p class="small text-muted">Configure this URL in your SMSPortal account for delivery receipts:</p>
-                <div class="input-group">
+                <p class="small text-muted mb-1">SMSPortal delivery receipts:</p>
+                <div class="input-group mb-2">
                     <input type="text" class="form-control form-control-sm" readonly
                         value="{{ route('webhooks.smsportal') }}" id="webhookUrl">
-                    <button class="btn btn-outline-secondary btn-sm" onclick="navigator.clipboard.writeText(document.getElementById('webhookUrl').value)">
+                    <button type="button" class="btn btn-outline-secondary btn-sm" onclick="navigator.clipboard.writeText(document.getElementById('webhookUrl').value)">
                         <i class="bi bi-clipboard"></i>
                     </button>
                 </div>
+                <p class="small text-muted mb-1">Amazon SES (via SNS) bounce/complaint/delivery:</p>
+                <div class="input-group">
+                    <input type="text" class="form-control form-control-sm" readonly
+                        value="{{ route('webhooks.ses') }}" id="sesWebhookUrl">
+                    <button type="button" class="btn btn-outline-secondary btn-sm" onclick="navigator.clipboard.writeText(document.getElementById('sesWebhookUrl').value)">
+                        <i class="bi bi-clipboard"></i>
+                    </button>
+                </div>
+                <small class="text-muted d-block mt-1">Append <code>?secret=YOUR_SECRET</code> if a webhook secret is set.</small>
                 <hr>
                 <p class="small text-muted mb-1"><i class="bi bi-info-circle me-1"></i>SMSPortal Delivery Status Codes:</p>
                 <ul class="small mb-0">

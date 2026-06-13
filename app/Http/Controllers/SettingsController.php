@@ -7,9 +7,26 @@ use Illuminate\Http\Request;
 
 class SettingsController extends Controller
 {
+    /**
+     * Checkbox settings — absent from the request means "off".
+     */
+    private const BOOLEAN_KEYS = ['vat_registered', 'smsportal_test_mode'];
+
     public function index()
     {
-        $settings = AppSetting::all()->pluck('value', 'key');
+        $raw = AppSetting::all()->pluck('value', 'key');
+
+        // Never expose secret values to the view; surface a "configured" flag instead.
+        $settings = [];
+        foreach ($raw as $key => $value) {
+            if (AppSetting::isEncryptedKey($key)) {
+                $settings[$key] = '';
+                $settings["{$key}_set"] = !empty($value);
+            } else {
+                $settings[$key] = $value;
+            }
+        }
+
         return view('settings.index', compact('settings'));
     }
 
@@ -37,10 +54,21 @@ class SettingsController extends Controller
             'ses_from_name' => 'nullable|string',
             'internal_cost_per_email' => 'nullable|numeric|min:0',
             'default_client_rate_per_email' => 'nullable|numeric|min:0',
+            'webhook_secret' => 'nullable|string|max:255',
         ]);
 
         foreach ($validated as $key => $value) {
+            // Blank secret submissions keep the existing stored value.
+            if (AppSetting::isEncryptedKey($key) && ($value === null || $value === '')) {
+                continue;
+            }
+
             AppSetting::set($key, $value ?? '', 'general');
+        }
+
+        // Persist checkbox off-states (absent keys mean unchecked).
+        foreach (self::BOOLEAN_KEYS as $key) {
+            AppSetting::set($key, $request->boolean($key) ? '1' : '0', 'general');
         }
 
         return redirect()->route('settings.index')
