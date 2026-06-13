@@ -9,4 +9,4 @@ Artisan::command('inspire', function () {
 })->purpose('Display an inspiring quote');
 
 // Run every minute to dispatch due campaigns
-Schedule::command('campaigns:send-scheduled')->everyMinute();
+Schedule::command('campaigns:send-scheduled')->everyMinute()->withoutOverlapping();

@@ -7,6 +7,7 @@ use App\Services\AuditLogService;
 use App\Models\Invoice;
 use App\Models\InvoiceItem;
 use App\Models\AppSetting;
+use Illuminate\Support\Facades\DB;
 
 class InvoiceService
 {
@@ -41,6 +42,10 @@ class InvoiceService
         $vatAmount = $vatRegistered ? round($subtotal * ($vatRate / 100), 2) : 0;
         $total     = $subtotal + $vatAmount;
 
+        return DB::transaction(function () use (
+            $campaign, $runs, $prefix, $smsQty, $smsRate, $smsSubtotal,
+            $emailQty, $emailRate, $emailSubtotal, $subtotal, $vatRegistered, $vatRate, $vatAmount, $total
+        ) {
         $invoice = Invoice::create([
             'client_id'      => $campaign->client_id,
             'campaign_id'    => $campaign->id,
@@ -87,6 +92,7 @@ class InvoiceService
         $campaign->update(['status' => 'invoice_generated']);
 
         return $invoice;
+        });
     }
 
     public function markAsPaid(Invoice $invoice): void

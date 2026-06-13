@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use App\Models\AppSetting;
 
 class Quote extends Model
 {
@@ -47,9 +48,10 @@ class Quote extends Model
 
     public static function getNextQuoteNumber(): string
     {
+        $prefix = AppSetting::get('quote_prefix', 'QUO');
         $year = date('Y');
         $last = static::withTrashed()
-            ->where('quote_number', 'like', "QUO-{$year}-%")
+            ->where('quote_number', 'like', "{$prefix}-{$year}-%")
             ->orderByDesc('id')
             ->first();
 
@@ -57,7 +59,7 @@ class Quote extends Model
             ? ((int) explode('-', $last->quote_number)[2]) + 1
             : 1;
 
-        return "QUO-{$year}-" . str_pad($seq, 4, '0', STR_PAD_LEFT);
+        return "{$prefix}-{$year}-" . str_pad($seq, 4, '0', STR_PAD_LEFT);
     }
 
     public function isExpired(): bool

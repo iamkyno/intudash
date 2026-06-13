@@ -7,6 +7,7 @@ use App\Models\Campaign;
 use App\Models\Invoice;
 use App\Models\Quote;
 use App\Models\QuoteItem;
+use Illuminate\Support\Facades\DB;
 
 class QuoteService
 {
@@ -45,6 +46,10 @@ class QuoteService
         $vatAmount = $vatRegistered ? round($subtotal * ($vatRate / 100), 2) : 0;
         $total     = $subtotal + $vatAmount;
 
+        return DB::transaction(function () use (
+            $campaign, $runs, $smsQty, $smsRate, $smsSubtotal,
+            $emailQty, $emailRate, $emailSubtotal, $subtotal, $vatRegistered, $vatRate, $vatAmount, $total
+        ) {
         $quote = Quote::create([
             'client_id'      => $campaign->client_id,
             'campaign_id'    => $campaign->id,
@@ -92,19 +97,22 @@ class QuoteService
         }
 
         return $quote;
+        });
     }
 
     public function acceptQuote(Quote $quote): Invoice
     {
-        $invoice = $this->invoiceService->generateFromCampaign($quote->campaign);
+        return DB::transaction(function () use ($quote) {
+            $invoice = $this->invoiceService->generateFromCampaign($quote->campaign);
 
-        $quote->update([
-            'status'     => 'accepted',
-            'accepted_at' => now(),
-            'invoice_id' => $invoice->id,
-        ]);
+            $quote->update([
+                'status'     => 'accepted',
+                'accepted_at' => now(),
+                'invoice_id' => $invoice->id,
+            ]);
 
-        return $invoice;
+            return $invoice;
+        });
     }
 
     public function declineQuote(Quote $quote): void

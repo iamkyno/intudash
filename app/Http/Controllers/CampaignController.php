@@ -9,6 +9,7 @@ use App\Models\Client;
 use App\Services\AuditLogService;
 use App\Services\SmsCounter;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class CampaignController extends Controller
 {
@@ -79,17 +80,22 @@ class CampaignController extends Controller
         if ($repeatCount > 1) {
             $groupId = Str::uuid()->toString();
             $baseName = $validated['name'];
-            $first = null;
-            for ($i = 1; $i <= $repeatCount; $i++) {
-                $data = array_merge($validated, [
-                    'name' => "{$baseName} (Run {$i} of {$repeatCount})",
-                    'campaign_group_id' => $groupId,
-                    'campaign_group_run' => $i,
-                ]);
-                $c = Campaign::create($data);
-                AuditLogService::log('campaign_created', $c, null, ['name' => $c->name]);
-                if ($i === 1) $first = $c;
-            }
+
+            $first = DB::transaction(function () use ($repeatCount, $validated, $baseName, $groupId) {
+                $first = null;
+                for ($i = 1; $i <= $repeatCount; $i++) {
+                    $data = array_merge($validated, [
+                        'name' => "{$baseName} (Run {$i} of {$repeatCount})",
+                        'campaign_group_id' => $groupId,
+                        'campaign_group_run' => $i,
+                    ]);
+                    $c = Campaign::create($data);
+                    AuditLogService::log('campaign_created', $c, null, ['name' => $c->name]);
+                    if ($i === 1) $first = $c;
+                }
+                return $first;
+            });
+
             return redirect()->route('campaigns.show', $first)
                 ->with('success', "{$repeatCount} campaign runs created. You're viewing Run 1.");
         }

@@ -18,12 +18,25 @@ class SendScheduledCampaigns extends Command
             ->where('scheduled_at', '<=', now())
             ->get();
 
+        $dispatched = 0;
+
         foreach ($campaigns as $campaign) {
+            // Atomically claim the campaign: only the process that flips
+            // 'scheduled' → 'sending' gets to dispatch it. Prevents double-send
+            // if a run overlaps the next minute.
+            $claimed = Campaign::where('id', $campaign->id)
+                ->where('status', 'scheduled')
+                ->update(['status' => 'sending']);
+
+            if (!$claimed) {
+                continue;
+            }
+
             Log::info('Dispatching scheduled campaign', ['id' => $campaign->id]);
-            SendCampaignJob::dispatch($campaign);
-            $campaign->update(['status' => 'sending']);
+            SendCampaignJob::dispatch($campaign->fresh());
+            $dispatched++;
         }
 
-        $this->info("Dispatched {$campaigns->count()} campaign(s).");
+        $this->info("Dispatched {$dispatched} campaign(s).");
     }
 }
