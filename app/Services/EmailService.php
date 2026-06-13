@@ -215,6 +215,15 @@ class EmailService
                 'delivered_at'   => $delivered ? now() : $log->delivered_at,
                 'raw_response'   => array_merge($log->raw_response ?? [], ['notification' => $payload]),
             ]);
+
+            // Sync the originating reminder (email-only) from the SES outcome.
+            if ($log->reminder_id && $log->reminder && $log->reminder->channel === 'email') {
+                if ($status === 'delivered') {
+                    $log->reminder->update(['status' => 'sent']);
+                } elseif (in_array($status, ['bounced', 'complained', 'rejected'])) {
+                    $log->reminder->update(['status' => 'failed', 'failure_reason' => "Email {$status}"]);
+                }
+            }
         }
     }
 

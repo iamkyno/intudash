@@ -3,8 +3,10 @@
 namespace App\Services;
 
 use App\Models\Client;
+use App\Models\EmailLog;
 use App\Models\Reminder;
 use App\Models\ReminderTemplate;
+use App\Models\SmsLog;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\ValidationException;
@@ -132,7 +134,8 @@ class ReminderService
 
         if (in_array($channel, ['sms', 'both'])) {
             $message = $this->render($template->sms_body ?? '', $reminder);
-            $res = $this->smsService->sendOne($reminder->phone_normalized ?: $reminder->phone, $message, $template->sender_name);
+            $number  = $reminder->phone_normalized ?: $reminder->phone;
+            $res = $this->smsService->sendOne($number, $message, $template->sender_name);
             $smsOk = $res['success'];
             if ($res['message_id']) {
                 $reminder->sms_provider_message_id = $res['message_id'];
@@ -140,6 +143,21 @@ class ReminderService
             if (!$smsOk) {
                 $reasons[] = 'SMS: ' . ($res['error'] ?? 'failed');
             }
+
+            // Unified delivery log — SMSPortal receipts update this row by message id.
+            SmsLog::create([
+                'source'              => 'reminder',
+                'reminder_id'         => $reminder->id,
+                'client_id'           => $reminder->client_id,
+                'recipient_number'    => $number,
+                'message'             => $message,
+                'sms_segments'        => 1,
+                'provider'            => 'smsportal',
+                'provider_message_id' => $res['message_id'] ?? null,
+                'status'              => $smsOk ? 'submitted' : 'failed',
+                'failure_reason'      => $smsOk ? null : ($res['error'] ?? 'failed'),
+                'sent_at'             => now(),
+            ]);
         }
 
         if (in_array($channel, ['email', 'both'])) {
@@ -160,6 +178,20 @@ class ReminderService
             if (!$emailOk) {
                 $reasons[] = 'Email: ' . ($res['error'] ?? 'failed');
             }
+
+            // Unified delivery log — SES (SNS) notifications update this row by message id.
+            EmailLog::create([
+                'source'              => 'reminder',
+                'reminder_id'         => $reminder->id,
+                'client_id'           => $reminder->client_id,
+                'recipient_email'     => $reminder->email,
+                'subject'             => $subject,
+                'provider'            => 'ses',
+                'provider_message_id' => $res['message_id'] ?? null,
+                'status'              => $emailOk ? 'sent' : 'failed',
+                'failure_reason'      => $emailOk ? null : ($res['error'] ?? 'failed'),
+                'sent_at'             => $emailOk ? now() : null,
+            ]);
         }
 
         if ($smsOk && $emailOk) {

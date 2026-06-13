@@ -7,7 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 class EmailLog extends Model
 {
     protected $fillable = [
-        'campaign_id', 'client_id', 'campaign_recipient_id', 'recipient_email',
+        'source', 'campaign_id', 'reminder_id', 'client_id', 'campaign_recipient_id', 'recipient_email',
         'subject', 'provider', 'provider_message_id', 'status', 'failure_reason',
         'sent_at', 'delivered_at', 'raw_response',
     ];
@@ -21,6 +21,11 @@ class EmailLog extends Model
     public function campaign()
     {
         return $this->belongsTo(Campaign::class);
+    }
+
+    public function reminder()
+    {
+        return $this->belongsTo(Reminder::class);
     }
 
     public function client()

@@ -143,7 +143,23 @@ class SmsService
             'raw_response' => array_merge($log->raw_response ?? [], ['delivery_receipt' => $payload]),
         ]);
 
-        $this->updateCampaignStatus($log->campaign);
+        if ($log->campaign_id && $log->campaign) {
+            $this->updateCampaignStatus($log->campaign);
+        } elseif ($log->reminder_id && $log->reminder) {
+            $this->updateReminderStatus($log->reminder, $status);
+        }
+    }
+
+    private function updateReminderStatus(\App\Models\Reminder $reminder, string $status): void
+    {
+        if (in_array($status, ['delivered'])) {
+            $reminder->update(['status' => 'sent']);
+        } elseif (in_array($status, ['undelivered', 'expired', 'blacklisted', 'no_route', 'failed', 'cancelled'])) {
+            // For a 'both' reminder, don't override a successful email leg.
+            if ($reminder->channel === 'sms') {
+                $reminder->update(['status' => 'failed', 'failure_reason' => "SMS {$status}"]);
+            }
+        }
     }
 
     private function mapDeliveryStatus(string $code): string
@@ -161,10 +177,10 @@ class SmsService
         };
     }
 
-    private function updateCampaignStatus(Campaign $campaign): void
+    private function updateCampaignStatus(?Campaign $campaign): void
     {
         // Only transition if campaign is in an active sending state
-        if (!in_array($campaign->status, ['sending', 'paused'])) {
+        if (!$campaign || !in_array($campaign->status, ['sending', 'paused'])) {
             return;
         }
 

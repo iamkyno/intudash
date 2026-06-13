@@ -30,6 +30,16 @@ class Reminder extends Model
         return $this->belongsTo(ReminderTemplate::class, 'reminder_template_id');
     }
 
+    public function smsLogs()
+    {
+        return $this->hasMany(SmsLog::class);
+    }
+
+    public function emailLogs()
+    {
+        return $this->hasMany(EmailLog::class);
+    }
+
     public function scopeDue($query)
     {
         return $query->where('status', 'pending')->where('send_at', '<=', now());
