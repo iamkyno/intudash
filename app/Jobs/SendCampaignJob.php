@@ -19,6 +19,9 @@ class SendCampaignJob implements ShouldQueue
     public int $tries = 3;
     public int $timeout = 300;
 
+    /** Space out retries (seconds) so a provider hiccup isn't hammered. */
+    public array $backoff = [30, 120, 300];
+
     public function __construct(public Campaign $campaign) {}
 
     public function handle(SmsService $smsService, EmailService $emailService): void

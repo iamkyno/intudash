@@ -111,16 +111,22 @@ class CampaignController extends Controller
     {
         $campaign->load(['client', 'invoices', 'quotes', 'recipients']);
 
+        // One grouped query instead of a count() per status.
+        $smsCounts = $campaign->smsLogs()
+            ->selectRaw('status, count(*) as aggregate')
+            ->groupBy('status')
+            ->pluck('aggregate', 'status');
+
         $deliveryStats = [
-            'total' => $campaign->smsLogs()->count(),
-            'submitted' => $campaign->smsLogs()->where('status', 'submitted')->count(),
-            'delivered' => $campaign->smsLogs()->where('status', 'delivered')->count(),
-            'undelivered' => $campaign->smsLogs()->where('status', 'undelivered')->count(),
-            'expired' => $campaign->smsLogs()->where('status', 'expired')->count(),
-            'blacklisted' => $campaign->smsLogs()->where('status', 'blacklisted')->count(),
-            'no_route' => $campaign->smsLogs()->where('status', 'no_route')->count(),
-            'failed' => $campaign->smsLogs()->where('status', 'failed')->count(),
-            'pending' => $campaign->smsLogs()->where('status', 'pending')->count(),
+            'total'       => $smsCounts->sum(),
+            'submitted'   => $smsCounts['submitted']   ?? 0,
+            'delivered'   => $smsCounts['delivered']   ?? 0,
+            'undelivered' => $smsCounts['undelivered'] ?? 0,
+            'expired'     => $smsCounts['expired']     ?? 0,
+            'blacklisted' => $smsCounts['blacklisted'] ?? 0,
+            'no_route'    => $smsCounts['no_route']    ?? 0,
+            'failed'      => $smsCounts['failed']      ?? 0,
+            'pending'     => $smsCounts['pending']     ?? 0,
         ];
 
         $total = max($deliveryStats['total'], 1);
@@ -129,14 +135,20 @@ class CampaignController extends Controller
             (($deliveryStats['undelivered'] + $deliveryStats['failed'] + $deliveryStats['expired'] + $deliveryStats['no_route']) / $total) * 100, 1
         );
 
+        // One grouped query for email delivery stats too.
+        $emailCounts = $campaign->emailLogs()
+            ->selectRaw('status, count(*) as aggregate')
+            ->groupBy('status')
+            ->pluck('aggregate', 'status');
+
         $emailStats = [
-            'total'      => $campaign->emailLogs()->count(),
-            'sent'       => $campaign->emailLogs()->where('status', 'sent')->count(),
-            'delivered'  => $campaign->emailLogs()->where('status', 'delivered')->count(),
-            'bounced'    => $campaign->emailLogs()->where('status', 'bounced')->count(),
-            'complained' => $campaign->emailLogs()->where('status', 'complained')->count(),
-            'rejected'   => $campaign->emailLogs()->where('status', 'rejected')->count(),
-            'failed'     => $campaign->emailLogs()->where('status', 'failed')->count(),
+            'total'      => $emailCounts->sum(),
+            'sent'       => $emailCounts['sent']       ?? 0,
+            'delivered'  => $emailCounts['delivered']  ?? 0,
+            'bounced'    => $emailCounts['bounced']    ?? 0,
+            'complained' => $emailCounts['complained'] ?? 0,
+            'rejected'   => $emailCounts['rejected']   ?? 0,
+            'failed'     => $emailCounts['failed']     ?? 0,
         ];
 
         return view('campaigns.show', compact('campaign', 'deliveryStats', 'emailStats'));
