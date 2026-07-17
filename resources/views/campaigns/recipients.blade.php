@@ -79,6 +79,33 @@
         </div>
     </div>
 
+    @if($recipientGroups->isNotEmpty())
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header"><i class="bi bi-collection me-2"></i>Import from Groups</div>
+            <div class="card-body">
+                <p class="small mb-3" style="color:var(--text-secondary);">
+                    Pull recipients straight from this client's saved audience — no CSV needed. Select one or more groups.
+                </p>
+                <form method="POST" action="{{ route('campaigns.recipients.import-from-groups', $campaign) }}"
+                      onsubmit="return confirm('Import all active recipients from the selected group(s) into this campaign?')">
+                    @csrf
+                    <div class="d-flex flex-wrap gap-3 mb-3">
+                        @foreach($recipientGroups as $g)
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" name="group_ids[]" value="{{ $g->id }}" id="ig{{ $g->id }}">
+                            <label class="form-check-label" for="ig{{ $g->id }}">{{ $g->name }} <span class="text-muted">({{ $g->recipients_count }})</span></label>
+                        </div>
+                        @endforeach
+                    </div>
+                    <button type="submit" class="btn btn-primary btn-sm">Import Selected Groups</button>
+                    <a href="{{ route('clients.recipients.index', $campaign->client) }}" class="btn btn-ghost btn-sm">Manage Recipients</a>
+                </form>
+            </div>
+        </div>
+    </div>
+    @endif
+
     @if($dataSources->isNotEmpty())
     <div class="col-12">
         <div class="card">

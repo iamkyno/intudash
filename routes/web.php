@@ -3,11 +3,13 @@
 use App\Http\Controllers\CampaignController;
 use App\Http\Controllers\ClientController;
 use App\Http\Controllers\ClientDataSourceController;
+use App\Http\Controllers\ClientRecipientController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\InvoiceController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\QuoteController;
 use App\Http\Controllers\RecipientController;
+use App\Http\Controllers\RecipientGroupController;
 use App\Http\Controllers\ReminderController;
 use App\Http\Controllers\ReminderTemplateController;
 use App\Http\Controllers\SendingDomainController;
@@ -59,6 +61,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('campaigns/{campaign}/recipients/export-invalid', [RecipientController::class, 'exportInvalid'])->name('campaigns.recipients.export-invalid');
     Route::get('campaigns/{campaign}/recipients/export-valid', [RecipientController::class, 'exportValid'])->name('campaigns.recipients.export-valid');
     Route::delete('campaigns/{campaign}/recipients/{recipient}', [RecipientController::class, 'destroy'])->name('campaigns.recipients.destroy');
+    Route::post('campaigns/{campaign}/recipients/import-from-groups', [RecipientController::class, 'importFromGroups'])->name('campaigns.recipients.import-from-groups');
 
     // Invoices
     Route::get('invoices', [InvoiceController::class, 'index'])->name('invoices.index');
@@ -109,6 +112,19 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('clients/{client}/sending-domains', [SendingDomainController::class, 'storeForClient'])->name('clients.sending-domains.store');
     Route::post('sending-domains/{domain}/check', [SendingDomainController::class, 'check'])->name('sending-domains.check');
     Route::delete('sending-domains/{domain}', [SendingDomainController::class, 'destroy'])->name('sending-domains.destroy');
+
+    // Client audience — persistent, groupable recipient lists (independent of any one campaign)
+    Route::get('clients/{client}/recipients', [ClientRecipientController::class, 'index'])->name('clients.recipients.index');
+    Route::post('clients/{client}/recipients', [ClientRecipientController::class, 'store'])->name('clients.recipients.store');
+    Route::post('clients/{client}/recipients/upload', [ClientRecipientController::class, 'upload'])->name('clients.recipients.upload');
+    Route::post('clients/{client}/recipients/bulk-assign', [ClientRecipientController::class, 'bulkAssign'])->name('clients.recipients.bulk-assign');
+    Route::get('clients/{client}/recipients/{recipient}/edit', [ClientRecipientController::class, 'edit'])->name('clients.recipients.edit');
+    Route::put('clients/{client}/recipients/{recipient}', [ClientRecipientController::class, 'update'])->name('clients.recipients.update');
+    Route::delete('clients/{client}/recipients/{recipient}', [ClientRecipientController::class, 'destroy'])->name('clients.recipients.destroy');
+
+    Route::post('clients/{client}/recipient-groups', [RecipientGroupController::class, 'store'])->name('clients.recipient-groups.store');
+    Route::put('clients/{client}/recipient-groups/{group}', [RecipientGroupController::class, 'update'])->name('clients.recipient-groups.update');
+    Route::delete('clients/{client}/recipient-groups/{group}', [RecipientGroupController::class, 'destroy'])->name('clients.recipient-groups.destroy');
 
     // Settings
     Route::get('settings', [SettingsController::class, 'index'])->name('settings.index');

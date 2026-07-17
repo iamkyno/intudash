@@ -4,7 +4,9 @@ namespace App\Http\Controllers;
 
 use App\Models\Campaign;
 use App\Models\CampaignRecipient;
+use App\Models\RecipientGroup;
 use App\Services\PhoneNormalizer;
+use App\Services\RecipientValidationService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use League\Csv\Reader;
@@ -25,7 +27,11 @@ class RecipientController extends Controller
             ? $campaign->client->dataSources()->where('active', true)->get()
             : collect();
 
-        return view('campaigns.recipients', compact('campaign', 'recipients', 'stats', 'dataSources'));
+        $recipientGroups = $campaign->client
+            ? $campaign->client->recipientGroups()->withCount('recipients')->orderBy('name')->get()
+            : collect();
+
+        return view('campaigns.recipients', compact('campaign', 'recipients', 'stats', 'dataSources', 'recipientGroups'));
     }
 
     public function store(Request $request, Campaign $campaign)
@@ -80,9 +86,7 @@ class RecipientController extends Controller
             'csv_file' => 'required|file|mimes:csv,txt|max:10240',
         ]);
 
-        $type       = $campaign->campaign_type ?? 'sms';
-        $needsPhone = in_array($type, ['sms', 'both']);
-        $needsEmail = in_array($type, ['email', 'both']);
+        $type = $campaign->campaign_type ?? 'sms';
 
         $file = $request->file('csv_file');
         $csv = Reader::createFromPath($file->getPathname(), 'r');
@@ -102,57 +106,29 @@ class RecipientController extends Controller
         foreach ($csv->getRecords() as $record) {
             $stats['total']++;
 
-            $name  = $record['name'] ?? $record['Name'] ?? null;
-            $email = trim($record['email'] ?? $record['Email'] ?? '');
-            $phone = trim($record['phone'] ?? $record['Phone'] ?? $record['mobile'] ?? '');
+            $fields = RecipientValidationService::extractCsvFields($record);
+            $row = RecipientValidationService::validateRow($fields['name'], $fields['phone'], $fields['email'], $type);
 
             $base = [
                 'campaign_id'      => $campaign->id,
-                'name'             => $name,
-                'phone'            => $phone,
-                'phone_normalized' => '',
-                'email'            => $email ?: null,
-                'invalid_reason'   => null,
+                'name'             => $row['name'],
+                'phone'            => $row['phone'] ?? '',
+                'phone_normalized' => $row['phone_normalized'] ?: ($row['phone'] ?? ''),
+                'email'            => $row['email'],
+                'invalid_reason'   => $row['invalid_reason'],
                 'created_at'       => $now,
                 'updated_at'       => $now,
             ];
 
-            // Determine validity by campaign channel.
-            $hasUsablePhone = false;
-            $normalized = '';
-            if (!empty($phone)) {
-                $result = PhoneNormalizer::validateAndNormalize($phone);
-                $hasUsablePhone = $result['valid'];
-                $normalized = $result['valid'] ? $result['normalized'] : '';
-                $base['phone_normalized'] = $normalized ?: $phone;
-                if (!$result['valid']) {
-                    $base['invalid_reason'] = $result['reason'];
-                }
-            }
-            $hasUsableEmail = !empty($email) && filter_var($email, FILTER_VALIDATE_EMAIL);
-
-            // A recipient is usable if it satisfies the channel requirement.
-            $usable = match ($type) {
-                'sms'   => $hasUsablePhone,
-                'email' => $hasUsableEmail,
-                'both'  => $hasUsablePhone || $hasUsableEmail,
-                default => $hasUsablePhone,
-            };
-
-            if (!$usable) {
+            if (!$row['usable']) {
                 $stats['invalid']++;
                 $base['status'] = 'invalid';
-                if (!$base['invalid_reason']) {
-                    $base['invalid_reason'] = $needsEmail && !$needsPhone
-                        ? 'Missing or invalid email address'
-                        : 'Missing or invalid phone number';
-                }
                 $rows[] = $base;
                 continue;
             }
 
             // Duplicate detection (phone-based when a phone exists, else email-based).
-            $dupeKey = $normalized ?: strtolower($email);
+            $dupeKey = $row['dedupe_key'];
             if ($dupeKey && (in_array($dupeKey, $existingNumbers) || in_array($dupeKey, $seenNumbers))) {
                 $stats['duplicate']++;
                 $base['status'] = 'duplicate';
@@ -183,6 +159,95 @@ class RecipientController extends Controller
 
         return redirect()->route('campaigns.recipients', $campaign)
             ->with('success', "Upload complete: {$stats['valid']} valid, {$stats['duplicate']} duplicates, {$stats['invalid']} invalid.");
+    }
+
+    /**
+     * Populate this campaign's recipient list from one or more of the client's
+     * saved Recipient Groups — snapshotted through the same validation/dedupe
+     * logic as a CSV upload, so downstream sending is unaffected.
+     */
+    public function importFromGroups(Request $request, Campaign $campaign)
+    {
+        abort_unless($campaign->client_id, 404);
+
+        $request->validate([
+            'group_ids'   => 'required|array|min:1',
+            'group_ids.*' => 'exists:recipient_groups,id',
+        ]);
+
+        $type = $campaign->campaign_type ?? 'sms';
+
+        $groups = RecipientGroup::where('client_id', $campaign->client_id)
+            ->whereIn('id', $request->group_ids)
+            ->with(['recipients' => fn ($q) => $q->active()])
+            ->get();
+
+        $contacts = $groups->flatMap->recipients->unique('id');
+
+        $stats = ['total' => 0, 'valid' => 0, 'duplicate' => 0, 'invalid' => 0];
+        $existingNumbers = $campaign->recipients()
+            ->where('status', 'valid')
+            ->pluck('phone_normalized')
+            ->filter()
+            ->toArray();
+
+        $seenNumbers = [];
+        $rows = [];
+        $now = now();
+
+        foreach ($contacts as $contact) {
+            $stats['total']++;
+
+            $row = RecipientValidationService::validateRow($contact->name, $contact->phone ?? '', $contact->email ?? '', $type);
+
+            $base = [
+                'campaign_id'      => $campaign->id,
+                'name'             => $row['name'],
+                'phone'            => $row['phone'] ?? '',
+                'phone_normalized' => $row['phone_normalized'] ?: ($row['phone'] ?? ''),
+                'email'            => $row['email'],
+                'invalid_reason'   => $row['invalid_reason'],
+                'created_at'       => $now,
+                'updated_at'       => $now,
+            ];
+
+            if (!$row['usable']) {
+                $stats['invalid']++;
+                $base['status'] = 'invalid';
+                $rows[] = $base;
+                continue;
+            }
+
+            $dupeKey = $row['dedupe_key'];
+            if ($dupeKey && (in_array($dupeKey, $existingNumbers) || in_array($dupeKey, $seenNumbers))) {
+                $stats['duplicate']++;
+                $base['status'] = 'duplicate';
+                $rows[] = $base;
+                continue;
+            }
+
+            if ($dupeKey) {
+                $seenNumbers[] = $dupeKey;
+            }
+            $stats['valid']++;
+            $base['status'] = 'valid';
+            $rows[] = $base;
+        }
+
+        DB::transaction(function () use ($rows, $campaign, $stats) {
+            foreach (array_chunk($rows, 500) as $chunk) {
+                CampaignRecipient::insert($chunk);
+            }
+
+            if ($stats['valid'] > 0 && $campaign->status === 'draft') {
+                $campaign->update(['status' => 'recipients_uploaded']);
+            }
+        });
+
+        $campaign->recalculateEstimates();
+
+        return redirect()->route('campaigns.recipients', $campaign)
+            ->with('success', "Imported from group(s): {$stats['valid']} valid, {$stats['duplicate']} duplicates, {$stats['invalid']} invalid.");
     }
 
     public function exportInvalid(Campaign $campaign)

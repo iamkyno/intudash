@@ -92,6 +92,29 @@
             </div>
         </div>
 
+        {{-- Recipients / audience --}}
+        <div class="card mt-3">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <span><i class="bi bi-people me-1"></i>Recipients</span>
+                <a href="{{ route('clients.recipients.index', $client) }}" class="btn btn-ghost btn-sm">
+                    <i class="bi bi-plus-lg"></i>
+                </a>
+            </div>
+            <div class="card-body">
+                @php
+                    $recipientCount = $client->recipients()->count();
+                    $groupCount = $client->recipientGroups()->count();
+                @endphp
+                <div class="d-flex justify-content-between align-items-center mb-1" style="font-size:13px;">
+                    <span>{{ number_format($recipientCount) }} recipient{{ $recipientCount === 1 ? '' : 's' }}</span>
+                    <span class="badge bg-secondary">{{ $groupCount }} group{{ $groupCount === 1 ? '' : 's' }}</span>
+                </div>
+                <a href="{{ route('clients.recipients.index', $client) }}" class="btn btn-ghost btn-sm mt-1 w-100">
+                    Manage Recipients
+                </a>
+            </div>
+        </div>
+
         {{-- Reminder API access --}}
         <div class="card mt-3">
             <div class="card-header"><i class="bi bi-key me-1"></i>Reminder API Token</div>

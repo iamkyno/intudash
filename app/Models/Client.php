@@ -39,6 +39,16 @@ class Client extends Model
         return $this->hasMany(SendingDomain::class);
     }
 
+    public function recipients()
+    {
+        return $this->hasMany(ClientRecipient::class);
+    }
+
+    public function recipientGroups()
+    {
+        return $this->hasMany(RecipientGroup::class);
+    }
+
     public function reminderTemplates()
     {
         return $this->hasMany(ReminderTemplate::class);
