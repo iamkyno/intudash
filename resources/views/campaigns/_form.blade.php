@@ -22,6 +22,15 @@
         @error('client_id')<div class="invalid-feedback">{{ $message }}</div>@enderror
     </div>
 
+    {{-- Recipient source --}}
+    <div class="col-12">
+        <label class="form-label">Recipients</label>
+        <select id="recipient-source" name="recipient_source" class="form-select">
+            <option value="">Enter estimate manually — upload/import recipients later</option>
+        </select>
+        <small class="text-muted" id="recipient-source-hint">Pick a saved group or the client's whole active list — recipients are imported the moment you save.</small>
+    </div>
+
     {{-- Campaign type --}}
     <div class="col-12">
         <label class="form-label">Campaign Type <span class="text-danger">*</span></label>
@@ -207,7 +216,79 @@ document.querySelector('select[name="client_id"]')?.addEventListener('change', f
     if (rate) document.getElementById('client_rate_per_sms').value = rate;
     if (typeof updateEstimator === 'function') updateEstimator();
     rebuildFromDomainPicker(this.value);
+    rebuildRecipientSourcePicker(this.value);
 });
+
+// ── Recipient source picker (choose a saved group / all recipients instead of estimating) ──
+const RECIPIENT_GROUPS = @json($recipientGroups->map(fn($g) => ['id' => $g->id, 'client_id' => $g->client_id, 'name' => $g->name, 'count' => $g->recipients_count]));
+const CLIENT_RECIPIENT_COUNTS = @json($clientRecipientCounts);
+const EXISTING_RECIPIENT_SOURCE = @json(old('recipient_source', ''));
+
+function rebuildRecipientSourcePicker(clientId) {
+    const select = document.getElementById('recipient-source');
+    if (!select) return;
+
+    const allCount = CLIENT_RECIPIENT_COUNTS[clientId] || 0;
+    const groups = RECIPIENT_GROUPS.filter(g => String(g.client_id) === String(clientId));
+
+    select.innerHTML = '';
+    const manual = document.createElement('option');
+    manual.value = '';
+    manual.textContent = 'Enter estimate manually — upload/import recipients later';
+    select.appendChild(manual);
+
+    if (allCount > 0) {
+        const all = document.createElement('option');
+        all.value = 'all';
+        all.dataset.count = allCount;
+        all.textContent = `All active recipients (${allCount})`;
+        select.appendChild(all);
+    }
+
+    groups.forEach(g => {
+        const opt = document.createElement('option');
+        opt.value = g.id;
+        opt.dataset.count = g.count;
+        opt.textContent = `Group: ${g.name} (${g.count})`;
+        select.appendChild(opt);
+    });
+
+    if (allCount === 0 && groups.length === 0) {
+        const hint = document.getElementById('recipient-source-hint');
+        if (hint) hint.innerHTML = 'This client has no saved recipients yet. <a href="/clients/' + clientId + '/recipients" target="_blank">Add some</a>, or enter an estimate for now.';
+    } else {
+        const hint = document.getElementById('recipient-source-hint');
+        if (hint) hint.innerHTML = 'Pick a saved group or the client\'s whole active list — recipients are imported the moment you save.';
+    }
+
+    if (EXISTING_RECIPIENT_SOURCE) {
+        const match = Array.from(select.options).find(o => o.value === EXISTING_RECIPIENT_SOURCE);
+        if (match) select.value = EXISTING_RECIPIENT_SOURCE;
+    }
+
+    applyRecipientSourceCount();
+}
+
+function applyRecipientSourceCount() {
+    const select = document.getElementById('recipient-source');
+    if (!select) return;
+    const opt = select.options[select.selectedIndex];
+    const estField = document.getElementById('estimated_recipients');
+    const estEmailField = document.getElementById('estimated_email_recipients');
+
+    const manual = !opt || !opt.value;
+    if (estField) estField.readOnly = !manual;
+    if (estEmailField) estEmailField.readOnly = !manual;
+
+    if (!manual && opt.dataset.count) {
+        if (estField) estField.value = opt.dataset.count;
+        if (estEmailField) estEmailField.value = opt.dataset.count;
+    }
+
+    if (typeof updateEstimator === 'function') updateEstimator();
+}
+
+document.getElementById('recipient-source')?.addEventListener('change', applyRecipientSourceCount);
 
 // ── From-address domain picker ──────────────────────────────────────
 const SENDING_DOMAINS = @json($sendingDomains->map(fn($d) => ['domain' => $d->domain, 'client_id' => $d->client_id, 'label' => $d->label]));
@@ -292,6 +373,7 @@ document.addEventListener('DOMContentLoaded', function() {
         clientSelect.dispatchEvent(new Event('change'));
     } else {
         rebuildFromDomainPicker('');
+        rebuildRecipientSourcePicker('');
     }
 
     // Prefill from an existing value (edit mode / validation redisplay)

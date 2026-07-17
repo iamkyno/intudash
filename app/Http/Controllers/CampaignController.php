@@ -6,8 +6,11 @@ use App\Jobs\SendCampaignJob;
 use Illuminate\Support\Str;
 use App\Models\Campaign;
 use App\Models\Client;
+use App\Models\ClientRecipient;
+use App\Models\RecipientGroup;
 use App\Models\SendingDomain;
 use App\Services\AuditLogService;
+use App\Services\CampaignRecipientImportService;
 use App\Services\SmsCounter;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -40,10 +43,12 @@ class CampaignController extends Controller
     {
         $clients = Client::where('status', 'active')->get();
         $sendingDomains = SendingDomain::verified()->orderBy('domain')->get();
-        return view('campaigns.create', compact('clients', 'sendingDomains'));
+        $recipientGroups = RecipientGroup::withCount(['recipients' => fn ($q) => $q->active()])->orderBy('name')->get();
+        $clientRecipientCounts = ClientRecipient::active()->selectRaw('client_id, count(*) as c')->groupBy('client_id')->pluck('c', 'client_id');
+        return view('campaigns.create', compact('clients', 'sendingDomains', 'recipientGroups', 'clientRecipientCounts'));
     }
 
-    public function store(Request $request)
+    public function store(Request $request, CampaignRecipientImportService $importer)
     {
         $type = $request->input('campaign_type', 'sms');
         $validated = $request->validate([
@@ -66,6 +71,8 @@ class CampaignController extends Controller
             'estimated_email_recipients' => 'nullable|integer|min:0',
             'repeat_enabled'             => 'nullable|boolean',
             'repeat_count'               => 'nullable|integer|min:2|max:52',
+            // '' = manual estimate (default), 'all' = client's whole active list, or a recipient_groups id.
+            'recipient_source'           => 'nullable|string|max:32',
         ]);
 
         if (in_array($type, ['sms', 'both']) && !empty($validated['message'])) {
@@ -76,6 +83,9 @@ class CampaignController extends Controller
         }
         $validated['user_id'] = auth()->id();
 
+        $recipientSource = $validated['recipient_source'] ?? null;
+        unset($validated['recipient_source']);
+
         $repeatCount = ($validated['repeat_enabled'] ?? false) ? (int) ($validated['repeat_count'] ?? 2) : 1;
         unset($validated['repeat_enabled'], $validated['repeat_count']);
 
@@ -83,8 +93,9 @@ class CampaignController extends Controller
             $groupId = Str::uuid()->toString();
             $baseName = $validated['name'];
 
-            $first = DB::transaction(function () use ($repeatCount, $validated, $baseName, $groupId) {
+            [$first, $created] = DB::transaction(function () use ($repeatCount, $validated, $baseName, $groupId) {
                 $first = null;
+                $created = [];
                 for ($i = 1; $i <= $repeatCount; $i++) {
                     $data = array_merge($validated, [
                         'name' => "{$baseName} (Run {$i} of {$repeatCount})",
@@ -93,10 +104,15 @@ class CampaignController extends Controller
                     ]);
                     $c = Campaign::create($data);
                     AuditLogService::log('campaign_created', $c, null, ['name' => $c->name]);
+                    $created[] = $c;
                     if ($i === 1) $first = $c;
                 }
-                return $first;
+                return [$first, $created];
             });
+
+            foreach ($created as $c) {
+                $this->importRecipientsFromSource($c, $recipientSource, $importer);
+            }
 
             return redirect()->route('campaigns.show', $first)
                 ->with('success', "{$repeatCount} campaign runs created. You're viewing Run 1.");
@@ -104,9 +120,35 @@ class CampaignController extends Controller
 
         $campaign = Campaign::create($validated);
         AuditLogService::log('campaign_created', $campaign, null, ['name' => $campaign->name]);
+        $this->importRecipientsFromSource($campaign, $recipientSource, $importer);
 
         return redirect()->route('campaigns.show', $campaign)
             ->with('success', 'Campaign created successfully.');
+    }
+
+    /**
+     * If the create form picked a recipient source instead of a manual estimate,
+     * pull the matching contacts in now — same validate/dedupe path as a CSV
+     * upload — so the campaign is already populated, not just estimated.
+     */
+    private function importRecipientsFromSource(Campaign $campaign, ?string $source, CampaignRecipientImportService $importer): void
+    {
+        if (!$source) {
+            return;
+        }
+
+        if ($source === 'all') {
+            $contacts = $campaign->client?->recipients()->active()->get();
+        } elseif (is_numeric($source)) {
+            $group = RecipientGroup::where('client_id', $campaign->client_id)->find($source);
+            $contacts = $group?->recipients()->active()->get();
+        } else {
+            $contacts = null;
+        }
+
+        if ($contacts && $contacts->isNotEmpty()) {
+            $importer->importContacts($campaign, $contacts);
+        }
     }
 
     public function show(Campaign $campaign)
@@ -161,10 +203,12 @@ class CampaignController extends Controller
         abort_if(!in_array($campaign->status, ['draft']), 403, 'Only draft campaigns can be edited.');
         $clients = Client::where('status', 'active')->get();
         $sendingDomains = SendingDomain::verified()->orderBy('domain')->get();
-        return view('campaigns.edit', compact('campaign', 'clients', 'sendingDomains'));
+        $recipientGroups = RecipientGroup::withCount(['recipients' => fn ($q) => $q->active()])->orderBy('name')->get();
+        $clientRecipientCounts = ClientRecipient::active()->selectRaw('client_id, count(*) as c')->groupBy('client_id')->pluck('c', 'client_id');
+        return view('campaigns.edit', compact('campaign', 'clients', 'sendingDomains', 'recipientGroups', 'clientRecipientCounts'));
     }
 
-    public function update(Request $request, Campaign $campaign)
+    public function update(Request $request, Campaign $campaign, CampaignRecipientImportService $importer)
     {
         abort_if(!in_array($campaign->status, ['draft']), 403);
 
@@ -187,6 +231,7 @@ class CampaignController extends Controller
             'internal_cost_per_email'    => 'nullable|numeric|min:0',
             'client_rate_per_email'      => 'nullable|numeric|min:0',
             'estimated_email_recipients' => 'nullable|integer|min:0',
+            'recipient_source'           => 'nullable|string|max:32',
         ]);
 
         if (in_array($type, ['sms', 'both']) && !empty($validated['message'])) {
@@ -195,9 +240,13 @@ class CampaignController extends Controller
             $validated['sms_segments'] = 1;
         }
 
+        $recipientSource = $validated['recipient_source'] ?? null;
+        unset($validated['recipient_source']);
+
         $old = $campaign->toArray();
         $campaign->update($validated);
         AuditLogService::log('campaign_updated', $campaign, $old, $validated);
+        $this->importRecipientsFromSource($campaign, $recipientSource, $importer);
 
         return redirect()->route('campaigns.show', $campaign)
             ->with('success', 'Campaign updated.');
