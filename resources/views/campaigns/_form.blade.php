@@ -222,7 +222,8 @@ document.querySelector('select[name="client_id"]')?.addEventListener('change', f
 });
 
 // ── Recipient source picker (choose a saved group / all recipients instead of estimating) ──
-const RECIPIENT_GROUPS = @json($recipientGroups->map(fn($g) => ['id' => $g->id, 'client_id' => $g->client_id, 'name' => $g->name, 'count' => $g->recipients_count]));
+// Note: Blade's json directive breaks on array literals with 4+ keys — use json_encode() directly instead.
+const RECIPIENT_GROUPS = {!! json_encode($recipientGroups->map(fn($g) => ['id' => $g->id, 'client_id' => $g->client_id, 'name' => $g->name, 'count' => $g->recipients_count])) !!};
 const CLIENT_RECIPIENT_COUNTS = @json($clientRecipientCounts);
 const EXISTING_RECIPIENT_SOURCE = @json(old('recipient_source', ''));
 
