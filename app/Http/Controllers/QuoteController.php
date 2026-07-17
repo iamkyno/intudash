@@ -16,9 +16,10 @@ class QuoteController extends Controller
     public function create()
     {
         $clients = Client::where('status', 'active')->get();
+        // Every draft/recipients_uploaded campaign is quotable now — one with zero
+        // recipients yet just needs a manual pre-sales estimate entered below.
         $campaigns = Campaign::with('client')
             ->whereIn('status', ['draft', 'recipients_uploaded'])
-            ->whereRaw('estimated_recipients > 0 OR id IN (SELECT campaign_id FROM campaign_recipients WHERE status = "valid")')
             ->latest()->get();
         return view('quotes.create', compact('clients', 'campaigns'));
     }
@@ -26,9 +27,38 @@ class QuoteController extends Controller
     public function store(Request $request)
     {
         $validated = $request->validate([
-            'campaign_id' => 'required|exists:campaigns,id',
+            'campaign_id'                => 'required|exists:campaigns,id',
+            'estimated_recipients'       => 'nullable|integer|min:1',
+            'estimated_email_recipients' => 'nullable|integer|min:1',
         ]);
         $campaign = Campaign::findOrFail($validated['campaign_id']);
+
+        // Manual pre-sales estimate — only ever applied when the campaign has no
+        // real recipients yet. Once real recipients exist they're always the
+        // source of truth; this never overrides an actual, uploaded/selected list.
+        $hasRealRecipients = $campaign->validRecipients()->exists();
+        if (!$hasRealRecipients) {
+            $type = $campaign->campaign_type ?? 'sms';
+            $updates = [];
+            if (in_array($type, ['sms', 'both']) && !empty($validated['estimated_recipients'])) {
+                $updates['estimated_recipients'] = $validated['estimated_recipients'];
+            }
+            if (in_array($type, ['email', 'both']) && !empty($validated['estimated_email_recipients'])) {
+                $updates['estimated_email_recipients'] = $validated['estimated_email_recipients'];
+            }
+            if ($updates) {
+                $campaign->update($updates);
+            }
+        }
+
+        $type = $campaign->campaign_type ?? 'sms';
+        $smsReady   = !in_array($type, ['sms', 'both'])   || $campaign->estimated_recipients > 0       || $hasRealRecipients;
+        $emailReady = !in_array($type, ['email', 'both']) || $campaign->estimated_email_recipients > 0 || $hasRealRecipients;
+
+        if (!$smsReady || !$emailReady) {
+            return back()->withInput()->with('error', 'This campaign has no recipients yet — enter an estimated count to generate a pre-sales quote.');
+        }
+
         $runs = $this->groupRunCount($campaign);
         $quote = $this->quoteService->generateFromCampaign($campaign, $runs);
         return redirect()->route('quotes.show', $quote)->with('success', 'Quote created.');

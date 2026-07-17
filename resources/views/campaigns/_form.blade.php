@@ -22,13 +22,13 @@
         @error('client_id')<div class="invalid-feedback">{{ $message }}</div>@enderror
     </div>
 
-    {{-- Recipient source --}}
+    {{-- Recipient source — always a real, selected list. No typed guesses; see Quotes for pre-sales estimates. --}}
     <div class="col-12">
         <label class="form-label">Recipients</label>
         <select id="recipient-source" name="recipient_source" class="form-select">
-            <option value="">Enter estimate manually — upload/import recipients later</option>
+            <option value="">No recipients selected yet — add them after creating this campaign</option>
         </select>
-        <small class="text-muted" id="recipient-source-hint">Pick a saved group or the client's whole active list — recipients are imported the moment you save.</small>
+        <small class="text-muted" id="recipient-source-hint">Pick a saved group or the client's whole active list — recipients are imported the moment you save. Costs are always calculated from actual recipients, never a typed guess.</small>
     </div>
 
     {{-- Campaign type --}}
@@ -76,9 +76,10 @@
                 </div>
             </div>
             <div class="col-md-4">
-                <label class="form-label">Estimated SMS Recipients</label>
-                <input type="number" name="estimated_recipients" id="estimated_recipients" min="0"
-                    class="form-control" value="{{ old('estimated_recipients', $campaign->estimated_recipients ?? '0') }}">
+                <label class="form-label">SMS Recipients <small class="text-muted">(from selection above)</small></label>
+                <input type="number" name="estimated_recipients" id="estimated_recipients" min="0" readonly
+                    class="form-control" value="{{ old('estimated_recipients', $campaign->estimated_recipients ?? '0') }}"
+                    style="background:var(--surface-bg);">
             </div>
         </div>
     </div>
@@ -147,9 +148,10 @@
                 </div>
             </div>
             <div class="col-md-4">
-                <label class="form-label">Estimated Email Recipients</label>
-                <input type="number" name="estimated_email_recipients" id="estimated_email_recipients" min="0"
-                    class="form-control" value="{{ old('estimated_email_recipients', $campaign->estimated_email_recipients ?? '0') }}">
+                <label class="form-label">Email Recipients <small class="text-muted">(from selection above)</small></label>
+                <input type="number" name="estimated_email_recipients" id="estimated_email_recipients" min="0" readonly
+                    class="form-control" value="{{ old('estimated_email_recipients', $campaign->estimated_email_recipients ?? '0') }}"
+                    style="background:var(--surface-bg);">
             </div>
         </div>
     </div>
@@ -275,15 +277,10 @@ function applyRecipientSourceCount() {
     const opt = select.options[select.selectedIndex];
     const estField = document.getElementById('estimated_recipients');
     const estEmailField = document.getElementById('estimated_email_recipients');
+    const count = (opt && opt.value) ? (opt.dataset.count || 0) : 0;
 
-    const manual = !opt || !opt.value;
-    if (estField) estField.readOnly = !manual;
-    if (estEmailField) estEmailField.readOnly = !manual;
-
-    if (!manual && opt.dataset.count) {
-        if (estField) estField.value = opt.dataset.count;
-        if (estEmailField) estEmailField.value = opt.dataset.count;
-    }
+    if (estField) estField.value = count;
+    if (estEmailField) estEmailField.value = count;
 
     if (typeof updateEstimator === 'function') updateEstimator();
 }

@@ -241,6 +241,11 @@ $siblings = \App\Models\Campaign::where('campaign_group_id', $campaign->campaign
                             <i class="bi bi-file-earmark-text"></i> Generate Quote
                         </button>
                     </form>
+                @elseif($campaign->status === 'draft' && $campaign->validRecipients()->count() === 0)
+                    <p class="small mb-0" style="color:var(--text-tertiary);">
+                        No recipients yet — add some, or
+                        <a href="{{ route('quotes.create') }}">create a pre-sales quote with an estimate</a>.
+                    </p>
                 @endif
 
                 @if($campaign->quotes->count() > 0)
