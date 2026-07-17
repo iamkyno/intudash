@@ -312,12 +312,7 @@ $siblings = \App\Models\Campaign::where('campaign_group_id', $campaign->campaign
                     </form>
                 @endif
 
-                @php
-                    $canDelete = in_array($campaign->status, ['draft','scheduled','cancelled','failed'])
-                        && !in_array($campaign->status, ['sending','completed','partially_completed'])
-                        && ($campaign->status !== 'scheduled' || ($campaign->scheduled_at && $campaign->scheduled_at->isFuture()));
-                @endphp
-                @if($canDelete)
+                @if($campaign->canBeDeleted())
                     <form action="{{ route('campaigns.destroy', $campaign) }}" method="POST">
                         @csrf @method('DELETE')
                         <button type="submit" class="btn btn-danger-ghost btn-sm w-100" onclick="return confirm('Permanently delete this campaign? This cannot be undone.')">

@@ -112,6 +112,15 @@
                             @if($campaign->status === 'draft')
                                 <a href="{{ route('campaigns.edit', $campaign) }}" class="btn btn-ghost btn-sm btn-icon"><i class="bi bi-pencil"></i></a>
                             @endif
+                            @if($campaign->canBeDeleted())
+                                <form action="{{ route('campaigns.destroy', $campaign) }}" method="POST" class="d-inline">
+                                    @csrf @method('DELETE')
+                                    <button type="submit" class="btn btn-ghost btn-sm btn-icon text-danger"
+                                            onclick="return confirm('Permanently delete &quot;{{ addslashes($campaign->name) }}&quot;? This cannot be undone.')">
+                                        <i class="bi bi-trash"></i>
+                                    </button>
+                                </form>
+                            @endif
                         </div>
                     </td>
                 </tr>

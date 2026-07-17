@@ -125,6 +125,21 @@ class Campaign extends Model
         return $this->status === 'paused';
     }
 
+    public function canBeDeleted(): bool
+    {
+        // Anything that hasn't actually gone out (or failed to) can be deleted —
+        // draft through ready-to-schedule, plus scheduled runs that haven't fired yet.
+        if (in_array($this->status, ['sending', 'completed', 'partially_completed'])) {
+            return false;
+        }
+
+        if ($this->status === 'scheduled') {
+            return $this->scheduled_at && $this->scheduled_at->isFuture();
+        }
+
+        return true;
+    }
+
     public function quotes()
     {
         return $this->hasMany(Quote::class);
