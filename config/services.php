@@ -24,10 +24,10 @@ return [
     ],
 
     'smsportal' => [
-        'client_id' => env('SMSPORTAL_CLIENT_ID'),
-        'api_secret' => env('SMSPORTAL_API_SECRET'),
+        // Client ID, API secret, and test mode are configured via Settings
+        // (AppSetting, DB-backed) — see SmsPortalProvider. Only the API
+        // endpoint stays here since it has no reason to be user-facing.
         'base_url' => env('SMSPORTAL_BASE_URL', 'https://rest.smsportal.com/v1'),
-        'test_mode' => env('SMSPORTAL_TEST_MODE', true),
     ],
 
 ];

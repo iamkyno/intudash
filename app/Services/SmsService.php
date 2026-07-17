@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\AppSetting;
 use App\Models\Campaign;
 use App\Models\CampaignRecipient;
 use App\Models\SmsLog;
@@ -18,11 +19,21 @@ class SmsService
         $this->provider = $provider ?? new SmsPortalProvider();
     }
 
+    private function credentialsConfigured(): bool
+    {
+        return !empty(AppSetting::get('smsportal_client_id', ''))
+            && !empty(AppSetting::get('smsportal_api_secret', ''));
+    }
+
     /**
      * Send a single transactional SMS (used by the reminder engine).
      */
     public function sendOne(string $phone, string $message, ?string $sender = null): array
     {
+        if (!$this->credentialsConfigured()) {
+            return ['success' => false, 'message_id' => null, 'error' => 'SMSPortal credentials are not configured in Settings.'];
+        }
+
         $result = $this->provider->sendBulk(
             [['phone' => $phone]],
             $message,
@@ -43,9 +54,16 @@ class SmsService
 
     public function sendCampaign(Campaign $campaign): array
     {
+        if (!$this->credentialsConfigured()) {
+            Log::error('SMSPortal credentials not configured', ['campaign_id' => $campaign->id]);
+            $this->markFailed($campaign, 'SMSPortal credentials are not configured in Settings.');
+            return ['success' => false, 'error' => 'SMSPortal credentials are not configured in Settings.'];
+        }
+
         $recipients = $campaign->validRecipients()->get();
 
         if ($recipients->isEmpty()) {
+            $this->markFailed($campaign, 'No valid recipients');
             return ['success' => false, 'error' => 'No valid recipients'];
         }
 
@@ -74,6 +92,23 @@ class SmsService
         }
 
         return $result;
+    }
+
+    /**
+     * Give up on a campaign that never reached the provider (missing credentials,
+     * no recipients). Callers always flip status to 'sending' before dispatching
+     * the send job, so without this the campaign would hang there forever.
+     */
+    private function markFailed(Campaign $campaign, string $reason): void
+    {
+        if (!in_array($campaign->status, ['sending', 'paused'])) {
+            return;
+        }
+
+        $campaign->update([
+            'status'            => 'failed',
+            'provider_response' => ['error' => $reason],
+        ]);
     }
 
     private function processSuccessfulSend(Campaign $campaign, $recipients, array $result): void

@@ -2,6 +2,7 @@
 
 namespace App\Services\Providers;
 
+use App\Models\AppSetting;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
@@ -15,10 +16,13 @@ class SmsPortalProvider implements SmsProviderInterface
 
     public function __construct()
     {
-        $this->clientId = config('services.smsportal.client_id', '');
-        $this->apiSecret = config('services.smsportal.api_secret', '');
+        // Credentials live in Settings (AppSetting, DB-backed) — not config/.env —
+        // so changes made in the UI take effect immediately. The API endpoint has
+        // no reason to be user-configurable and stays in config/services.php.
+        $this->clientId = AppSetting::get('smsportal_client_id', '');
+        $this->apiSecret = AppSetting::get('smsportal_api_secret', '');
         $this->baseUrl = config('services.smsportal.base_url', 'https://rest.smsportal.com/v1');
-        $this->testMode = config('services.smsportal.test_mode', true);
+        $this->testMode = AppSetting::get('smsportal_test_mode', '1') == '1';
     }
 
     public function authenticate(): bool
@@ -53,7 +57,7 @@ class SmsPortalProvider implements SmsProviderInterface
         return ['Authorization' => "Bearer {$this->token}"];
     }
 
-    public function sendBulk(array $recipients, string $message, string $sender = null): array
+    public function sendBulk(array $recipients, string $message, ?string $sender = null): array
     {
         if (!$this->token && !$this->authenticate()) {
             return ['success' => false, 'error' => 'Authentication failed', 'results' => []];

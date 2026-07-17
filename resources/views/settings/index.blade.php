@@ -169,7 +169,7 @@
                         <div class="col-md-6">
                             <label class="form-label">SMSPortal Client ID</label>
                             <input type="text" name="smsportal_client_id" class="form-control"
-                                value="{{ $settings['smsportal_client_id'] ?? config('services.smsportal.client_id') }}"
+                                value="{{ $settings['smsportal_client_id'] ?? '' }}"
                                 placeholder="Your SMSPortal Client ID">
                         </div>
                         <div class="col-md-6">
