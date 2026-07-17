@@ -34,6 +34,11 @@ class Client extends Model
         return $this->hasMany(ClientDataSource::class);
     }
 
+    public function sendingDomains()
+    {
+        return $this->hasMany(SendingDomain::class);
+    }
+
     public function reminderTemplates()
     {
         return $this->hasMany(ReminderTemplate::class);

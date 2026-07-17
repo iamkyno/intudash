@@ -72,8 +72,15 @@
                 </div>
                 <div class="col-md-4">
                     <label class="form-label">From Address</label>
-                    <input type="email" name="email_from_address" class="form-control"
-                        value="{{ old('email_from_address', $template->email_from_address ?? '') }}" placeholder="verified@domain.com">
+                    <div class="input-group input-group-sm" id="from-picker-group">
+                        <input type="text" id="email_from_local" class="form-control" placeholder="reminders" autocomplete="off">
+                        <span class="input-group-text">@</span>
+                        <select id="email_from_domain" class="form-select"></select>
+                    </div>
+                    <input type="email" name="email_from_address" id="email_from_address" class="form-control"
+                        value="{{ old('email_from_address', $template->email_from_address ?? '') }}"
+                        placeholder="verified@domain.com" style="display:none;">
+                    <small class="text-muted" id="email_from_hint">Pick a verified domain — keeps reminders looking friendly &amp; trusted.</small>
                 </div>
                 <div class="col-md-4">
                     <label class="form-label">Reply-To</label>
@@ -105,4 +112,96 @@ function rtToggle() {
     document.getElementById('rt-email').style.display = (ch === 'email' || ch === 'both') ? '' : 'none';
 }
 document.addEventListener('DOMContentLoaded', rtToggle);
+
+// ── From-address domain picker ──────────────────────────────────────
+const SENDING_DOMAINS = @json($sendingDomains->map(fn($d) => ['domain' => $d->domain, 'client_id' => $d->client_id, 'label' => $d->label]));
+const EXISTING_FROM_ADDRESS = @json(old('email_from_address', $template->email_from_address ?? ''));
+
+function splitEmail(addr) {
+    const at = addr.lastIndexOf('@');
+    return at === -1 ? [addr, ''] : [addr.substring(0, at), addr.substring(at + 1)];
+}
+
+function showPlainFromInput(prefill) {
+    const group = document.getElementById('from-picker-group');
+    const plain = document.getElementById('email_from_address');
+    const hint  = document.getElementById('email_from_hint');
+    if (!group || !plain) return;
+    group.style.display = 'none';
+    plain.style.display = '';
+    if (prefill !== undefined) plain.value = prefill;
+    if (hint) hint.innerHTML = 'No verified domains match this client yet. <a href="{{ route('settings.sending-domains.index') }}" target="_blank">Verify one</a>, or type any SES-verified address manually.';
+}
+
+function rebuildFromDomainPicker(clientId) {
+    const select = document.getElementById('email_from_domain');
+    const group  = document.getElementById('from-picker-group');
+    const plain  = document.getElementById('email_from_address');
+    const hint   = document.getElementById('email_from_hint');
+    if (!select || !group || !plain) return;
+
+    const matches = SENDING_DOMAINS.filter(d => !d.client_id || String(d.client_id) === String(clientId));
+
+    if (matches.length === 0) {
+        showPlainFromInput();
+        return;
+    }
+
+    group.style.display = '';
+    plain.style.display = 'none';
+    if (hint) hint.innerHTML = 'Pick a verified domain — keeps reminders looking friendly &amp; trusted.';
+
+    select.innerHTML = '';
+    const blank = document.createElement('option');
+    blank.value = ''; blank.textContent = '— account default —';
+    select.appendChild(blank);
+    matches.forEach(d => {
+        const opt = document.createElement('option');
+        opt.value = d.domain;
+        opt.textContent = d.label ? `${d.domain} (${d.label})` : d.domain;
+        select.appendChild(opt);
+    });
+    const custom = document.createElement('option');
+    custom.value = '__custom__';
+    custom.textContent = 'Custom / other domain…';
+    select.appendChild(custom);
+}
+
+function composeFromAddress() {
+    const select = document.getElementById('email_from_domain');
+    const local  = document.getElementById('email_from_local');
+    const plain  = document.getElementById('email_from_address');
+    if (!select || document.getElementById('from-picker-group').style.display === 'none') return;
+
+    if (select.value === '__custom__') {
+        showPlainFromInput('');
+        plain.focus();
+        return;
+    }
+    plain.value = select.value ? `${local.value.trim()}@${select.value}` : '';
+}
+
+document.getElementById('email_from_domain')?.addEventListener('change', composeFromAddress);
+document.getElementById('email_from_local')?.addEventListener('input', composeFromAddress);
+document.querySelector('select[name="client_id"]')?.addEventListener('change', function() {
+    rebuildFromDomainPicker(this.value);
+});
+
+document.addEventListener('DOMContentLoaded', function() {
+    const clientSelect = document.querySelector('select[name="client_id"]');
+    rebuildFromDomainPicker(clientSelect ? clientSelect.value : '');
+
+    if (EXISTING_FROM_ADDRESS) {
+        const [local, domain] = splitEmail(EXISTING_FROM_ADDRESS);
+        const select = document.getElementById('email_from_domain');
+        const match = select && Array.from(select.options).find(o => o.value === domain);
+        if (match) {
+            select.value = domain;
+            document.getElementById('email_from_local').value = local;
+            composeFromAddress();
+        } else {
+            showPlainFromInput(EXISTING_FROM_ADDRESS);
+        }
+    }
+});
 </script>

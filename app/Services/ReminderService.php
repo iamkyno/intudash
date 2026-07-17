@@ -169,7 +169,8 @@ class ReminderService
                 $body,
                 $template->email_from_name,
                 $template->email_from_address,
-                $template->email_reply_to
+                $template->email_reply_to,
+                $reminder->client_id
             );
             $emailOk = $res['success'];
             if ($res['message_id']) {

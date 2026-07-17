@@ -6,6 +6,7 @@ use App\Jobs\SendCampaignJob;
 use Illuminate\Support\Str;
 use App\Models\Campaign;
 use App\Models\Client;
+use App\Models\SendingDomain;
 use App\Services\AuditLogService;
 use App\Services\SmsCounter;
 use Illuminate\Http\Request;
@@ -38,7 +39,8 @@ class CampaignController extends Controller
     public function create()
     {
         $clients = Client::where('status', 'active')->get();
-        return view('campaigns.create', compact('clients'));
+        $sendingDomains = SendingDomain::verified()->orderBy('domain')->get();
+        return view('campaigns.create', compact('clients', 'sendingDomains'));
     }
 
     public function store(Request $request)
@@ -158,7 +160,8 @@ class CampaignController extends Controller
     {
         abort_if(!in_array($campaign->status, ['draft']), 403, 'Only draft campaigns can be edited.');
         $clients = Client::where('status', 'active')->get();
-        return view('campaigns.edit', compact('campaign', 'clients'));
+        $sendingDomains = SendingDomain::verified()->orderBy('domain')->get();
+        return view('campaigns.edit', compact('campaign', 'clients', 'sendingDomains'));
     }
 
     public function update(Request $request, Campaign $campaign)

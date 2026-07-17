@@ -160,6 +160,34 @@
                 </a>
             </div>
         </div>
+
+        {{-- Sending domains (friendly marketing domains) --}}
+        <div class="card mt-3">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <span><i class="bi bi-globe me-1"></i>Sending Domains</span>
+                <a href="{{ route('clients.sending-domains.index', $client) }}" class="btn btn-ghost btn-sm">
+                    <i class="bi bi-plus-lg"></i>
+                </a>
+            </div>
+            <div class="card-body">
+                @php $sendingDomains = $client->sendingDomains()->get(); @endphp
+                @if($sendingDomains->isEmpty())
+                    <p class="small mb-2" style="color:var(--text-secondary);">No custom domain yet — campaigns use the agency default.</p>
+                @else
+                    @foreach($sendingDomains as $sd)
+                    <div class="d-flex justify-content-between align-items-center mb-1" style="font-size:13px;">
+                        <span>{{ $sd->domain }}</span>
+                        <span class="badge {{ $sd->isVerified() ? 'bg-success' : 'bg-warning text-dark' }}">
+                            {{ $sd->isVerified() ? 'Verified' : 'Pending' }}
+                        </span>
+                    </div>
+                    @endforeach
+                @endif
+                <a href="{{ route('clients.sending-domains.index', $client) }}" class="btn btn-ghost btn-sm mt-1 w-100">
+                    Manage Sending Domains
+                </a>
+            </div>
+        </div>
     </div>
     <div class="col-md-8">
         <div class="card mb-3">

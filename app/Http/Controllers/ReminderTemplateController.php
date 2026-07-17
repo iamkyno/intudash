@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Client;
 use App\Models\ReminderTemplate;
+use App\Models\SendingDomain;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
@@ -25,7 +26,8 @@ class ReminderTemplateController extends Controller
     public function create()
     {
         $clients = Client::active()->get();
-        return view('reminders.templates.create', compact('clients'));
+        $sendingDomains = SendingDomain::verified()->orderBy('domain')->get();
+        return view('reminders.templates.create', compact('clients', 'sendingDomains'));
     }
 
     public function store(Request $request)
@@ -42,7 +44,8 @@ class ReminderTemplateController extends Controller
     public function edit(ReminderTemplate $reminderTemplate)
     {
         $clients = Client::active()->get();
-        return view('reminders.templates.edit', ['template' => $reminderTemplate, 'clients' => $clients]);
+        $sendingDomains = SendingDomain::verified()->orderBy('domain')->get();
+        return view('reminders.templates.edit', ['template' => $reminderTemplate, 'clients' => $clients, 'sendingDomains' => $sendingDomains]);
     }
 
     public function update(Request $request, ReminderTemplate $reminderTemplate)

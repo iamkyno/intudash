@@ -102,6 +102,15 @@
             <div class="card mb-3">
                 <div class="card-header"><i class="bi bi-envelope-at me-2"></i>Amazon SES (Email) Settings</div>
                 <div class="card-body">
+                    <div class="alert alert-light border d-flex justify-content-between align-items-center py-2 px-3 mb-3">
+                        <span class="small mb-0">
+                            <i class="bi bi-globe me-1"></i>Want to send from a different or more "friendly" domain?
+                            Verify it under Sending Domains — agency-wide, or per-client for marketing sends.
+                        </span>
+                        <a href="{{ route('settings.sending-domains.index') }}" class="btn btn-outline-primary btn-sm text-nowrap ms-2">
+                            Manage Sending Domains
+                        </a>
+                    </div>
                     <div class="row g-3">
                         <div class="col-md-6">
                             <label class="form-label">AWS Access Key</label>

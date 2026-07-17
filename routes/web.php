@@ -10,6 +10,7 @@ use App\Http\Controllers\QuoteController;
 use App\Http\Controllers\RecipientController;
 use App\Http\Controllers\ReminderController;
 use App\Http\Controllers\ReminderTemplateController;
+use App\Http\Controllers\SendingDomainController;
 use App\Http\Controllers\SettingsController;
 use App\Http\Controllers\WebhookController;
 use Illuminate\Support\Facades\Route;
@@ -100,6 +101,14 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::delete('clients/{client}/data-sources/{dataSource}', [ClientDataSourceController::class, 'destroy'])->name('clients.data-sources.destroy');
     Route::post('clients/{client}/data-sources/{dataSource}/preview', [ClientDataSourceController::class, 'preview'])->name('clients.data-sources.preview');
     Route::post('clients/{client}/data-sources/{dataSource}/import', [ClientDataSourceController::class, 'import'])->name('clients.data-sources.import');
+
+    // Sending domains (SES) — agency-wide default + per-client "friendly" marketing domains
+    Route::get('settings/sending-domains', [SendingDomainController::class, 'indexGlobal'])->name('settings.sending-domains.index');
+    Route::post('settings/sending-domains', [SendingDomainController::class, 'storeGlobal'])->name('settings.sending-domains.store');
+    Route::get('clients/{client}/sending-domains', [SendingDomainController::class, 'indexForClient'])->name('clients.sending-domains.index');
+    Route::post('clients/{client}/sending-domains', [SendingDomainController::class, 'storeForClient'])->name('clients.sending-domains.store');
+    Route::post('sending-domains/{domain}/check', [SendingDomainController::class, 'check'])->name('sending-domains.check');
+    Route::delete('sending-domains/{domain}', [SendingDomainController::class, 'destroy'])->name('sending-domains.destroy');
 
     // Settings
     Route::get('settings', [SettingsController::class, 'index'])->name('settings.index');

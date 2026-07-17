@@ -6,6 +6,7 @@ use App\Models\AppSetting;
 use App\Models\Campaign;
 use App\Models\CampaignRecipient;
 use App\Models\EmailLog;
+use App\Models\SendingDomain;
 use Aws\Ses\SesClient;
 use Aws\Exception\AwsException;
 use Illuminate\Support\Facades\Log;
@@ -36,6 +37,33 @@ class EmailService
             && !empty(AppSetting::get('aws_secret', ''));
     }
 
+    /**
+     * If the "From" domain is tracked in Sending Domains but not yet verified,
+     * return a clear guidance message so the send fails fast instead of getting
+     * a raw SES "MessageRejected" error. Domains that aren't tracked at all
+     * (verified directly in the AWS console, outside this app) pass through
+     * unchanged — this only guards domains added via Settings/Client → Sending Domains.
+     */
+    private function unverifiedDomainError(?int $clientId, string $fromAddress): ?string
+    {
+        $domain = strtolower(substr((string) strrchr($fromAddress, '@'), 1));
+        if ($domain === '') {
+            return null;
+        }
+
+        $tracked = SendingDomain::where('domain', $domain)
+            ->where(function ($q) use ($clientId) {
+                $q->whereNull('client_id')->orWhere('client_id', $clientId);
+            })
+            ->first();
+
+        if ($tracked && !$tracked->isVerified()) {
+            return "Sending domain '{$domain}' is still pending SES verification. Finish adding its DNS records under Sending Domains before sending from it.";
+        }
+
+        return null;
+    }
+
     public function sendCampaign(Campaign $campaign): array
     {
         if (!$this->credentialsConfigured()) {
@@ -58,6 +86,11 @@ class EmailService
 
         if (!$fromAddress) {
             return ['success' => false, 'error' => 'No from address configured', 'sent' => 0, 'failed' => 0, 'total' => 0];
+        }
+
+        if ($domainError = $this->unverifiedDomainError($campaign->client_id, $fromAddress)) {
+            Log::warning('SES send blocked — unverified domain', ['campaign_id' => $campaign->id, 'from' => $fromAddress]);
+            return ['success' => false, 'error' => $domainError, 'sent' => 0, 'failed' => 0, 'total' => $recipients->count()];
         }
 
         $client = $this->client();
@@ -144,7 +177,8 @@ class EmailService
         string $htmlBody,
         ?string $fromName = null,
         ?string $fromAddress = null,
-        ?string $replyTo = null
+        ?string $replyTo = null,
+        ?int $clientId = null
     ): array {
         if (!$this->credentialsConfigured()) {
             return ['success' => false, 'message_id' => null, 'error' => 'SES credentials not configured'];
@@ -156,6 +190,10 @@ class EmailService
 
         if (!$fromAddress) {
             return ['success' => false, 'message_id' => null, 'error' => 'No from address configured'];
+        }
+
+        if ($domainError = $this->unverifiedDomainError($clientId, $fromAddress)) {
+            return ['success' => false, 'message_id' => null, 'error' => $domainError];
         }
 
         try {
