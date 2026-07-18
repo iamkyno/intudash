@@ -14,6 +14,12 @@ class SmsService
 {
     private SmsProviderInterface $provider;
 
+    /** Give up actively polling a message after this many checks — it stays 'submitted' but stops blocking the campaign. */
+    private const MAX_POLL_ATTEMPTS = 5;
+
+    /** Minutes to wait before each successive poll attempt (indexed by current attempt count). */
+    private const POLL_BACKOFF_MINUTES = [2, 5, 10, 20, 30];
+
     public function __construct(?SmsProviderInterface $provider = null)
     {
         $this->provider = $provider ?? new SmsPortalProvider();
@@ -212,6 +218,111 @@ class SmsService
         };
     }
 
+    /**
+     * Actively check SMSPortal's status API for any message still awaiting a
+     * delivery-receipt webhook — a fallback for when the webhook never arrives
+     * (unreachable URL, secret mismatch, provider outage, etc). Runs the whole
+     * queue of due messages; one failure never blocks the rest. Backs off
+     * between attempts per message and gives up after MAX_POLL_ATTEMPTS so a
+     * permanently-unresolvable message can't keep its campaign stuck forever.
+     */
+    public function pollPendingDeliveries(): array
+    {
+        $stats = ['checked' => 0, 'resolved' => 0, 'gave_up' => 0, 'errors' => 0];
+
+        $candidates = SmsLog::whereIn('status', ['pending', 'submitted', 'staged'])
+            ->whereNotNull('provider_message_id')
+            ->where('poll_attempts', '<', self::MAX_POLL_ATTEMPTS)
+            ->where(function ($q) {
+                $q->whereNull('last_polled_at')->orWhere('last_polled_at', '<=', now()->subMinutes(2));
+            })
+            ->get()
+            ->filter(fn ($log) => $this->isDueForPoll($log));
+
+        $affectedCampaignIds = [];
+
+        foreach ($candidates as $log) {
+            $stats['checked']++;
+
+            try {
+                $result = $this->provider->getDeliveryStatus($log->provider_message_id);
+                $resolvedStatus = ($result['success'] ?? false) ? $this->extractStatusFromPoll($result['data'] ?? []) : null;
+
+                if ($resolvedStatus) {
+                    $log->update([
+                        'status'         => $resolvedStatus,
+                        'delivered_at'   => $resolvedStatus === 'delivered' ? now() : null,
+                        'failure_reason' => in_array($resolvedStatus, ['undelivered', 'expired', 'blacklisted', 'no_route', 'failed'])
+                            ? 'Resolved via status poll — no webhook receipt arrived.'
+                            : null,
+                        'poll_attempts'  => $log->poll_attempts + 1,
+                        'last_polled_at' => now(),
+                        'raw_response'   => array_merge($log->raw_response ?? [], ['status_poll' => $result['data'] ?? null]),
+                    ]);
+                    $stats['resolved']++;
+                } else {
+                    $newAttempts = $log->poll_attempts + 1;
+                    $log->update(['poll_attempts' => $newAttempts, 'last_polled_at' => now()]);
+                    if ($newAttempts >= self::MAX_POLL_ATTEMPTS) {
+                        $stats['gave_up']++;
+                        Log::warning('Gave up polling SMS delivery status — no webhook or poll ever confirmed it', [
+                            'sms_log_id' => $log->id,
+                            'message_id' => $log->provider_message_id,
+                        ]);
+                    }
+                }
+            } catch (\Throwable $e) {
+                // One message failing to check never blocks the rest of the queue.
+                $stats['errors']++;
+                Log::warning('SMS delivery status poll failed, will retry', ['sms_log_id' => $log->id, 'error' => $e->getMessage()]);
+                $log->update(['poll_attempts' => $log->poll_attempts + 1, 'last_polled_at' => now()]);
+            }
+
+            if ($log->campaign_id) {
+                $affectedCampaignIds[$log->campaign_id] = true;
+            }
+        }
+
+        foreach (array_keys($affectedCampaignIds) as $campaignId) {
+            $campaign = Campaign::find($campaignId);
+            if ($campaign) {
+                $this->updateCampaignStatus($campaign);
+            }
+        }
+
+        return $stats;
+    }
+
+    private function isDueForPoll(SmsLog $log): bool
+    {
+        if (!$log->last_polled_at) {
+            // First check — give the webhook a couple minutes' head start before polling.
+            return $log->sent_at && $log->sent_at->lte(now()->subMinutes(2));
+        }
+
+        $schedule = self::POLL_BACKOFF_MINUTES;
+        $backoff = $schedule[$log->poll_attempts] ?? end($schedule);
+
+        return $log->last_polled_at->lte(now()->subMinutes($backoff));
+    }
+
+    /**
+     * Only treat a poll result as resolving the message if it's a terminal
+     * outcome — a re-confirmed 'submitted'/'staged' just means still in
+     * flight, so keep polling rather than "resolving" to a non-answer.
+     */
+    private function extractStatusFromPoll(array $data): ?string
+    {
+        $code = $data['statusCode'] ?? $data['status'] ?? $data['deliveryStatus'] ?? null;
+        if (!$code) {
+            return null;
+        }
+
+        $mapped = $this->mapDeliveryStatus((string) $code);
+
+        return in_array($mapped, ['pending', 'submitted', 'staged']) ? null : $mapped;
+    }
+
     private function updateCampaignStatus(?Campaign $campaign): void
     {
         // Only transition if campaign is in an active sending state
@@ -219,21 +330,35 @@ class SmsService
             return;
         }
 
-        $logs = $campaign->smsLogs();
-        $delivered  = $logs->where('status', 'delivered')->count();
-        $failed     = $logs->whereIn('status', ['undelivered', 'expired', 'failed', 'no_route', 'blacklisted', 'cancelled'])->count();
-        $pending    = $logs->whereIn('status', ['pending', 'submitted', 'staged'])->count();
+        // Note: $campaign->smsLogs() returns a mutable relation query builder —
+        // calling ->where()->count() on the SAME instance repeatedly accumulates
+        // every prior where() clause (Eloquent builders mutate and return $this),
+        // silently ANDing unrelated conditions together. Always start a fresh
+        // query per count (a single grouped query here, both correct and cheaper).
+        $counts = $campaign->smsLogs()
+            ->selectRaw("
+                sum(case when status = 'delivered' then 1 else 0 end) as delivered,
+                sum(case when status in ('undelivered','expired','failed','no_route','blacklisted','cancelled') then 1 else 0 end) as failed,
+                sum(case when status in ('pending','submitted','staged') and poll_attempts < ? then 1 else 0 end) as still_waiting,
+                sum(case when status in ('pending','submitted','staged') and poll_attempts >= ? then 1 else 0 end) as unconfirmed
+            ", [self::MAX_POLL_ATTEMPTS, self::MAX_POLL_ATTEMPTS])
+            ->first();
 
-        // Wait until every log has a final status before marking complete
-        if ($pending > 0) {
+        $delivered    = (int) $counts->delivered;
+        $failed       = (int) $counts->failed;
+        $stillWaiting = (int) $counts->still_waiting;
+        $unconfirmed  = (int) $counts->unconfirmed;
+
+        // Still within their retry budget — give them more time before deciding anything.
+        if ($stillWaiting > 0) {
             return;
         }
 
         $campaign->update(['completed_at' => now()]);
 
-        if ($delivered > 0 && $failed === 0) {
+        if ($delivered > 0 && $failed === 0 && $unconfirmed === 0) {
             $campaign->update(['status' => 'completed']);
-        } elseif ($delivered > 0) {
+        } elseif ($delivered > 0 || $unconfirmed > 0) {
             $campaign->update(['status' => 'partially_completed']);
         } else {
             $campaign->update(['status' => 'failed']);

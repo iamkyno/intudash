@@ -10,12 +10,13 @@ class SmsLog extends Model
         'source', 'campaign_id', 'reminder_id', 'client_id', 'campaign_recipient_id', 'recipient_number',
         'message', 'sms_segments', 'provider', 'provider_message_id',
         'provider_event_id', 'status', 'failure_reason', 'sent_at',
-        'delivered_at', 'raw_response',
+        'delivered_at', 'raw_response', 'poll_attempts', 'last_polled_at',
     ];
 
     protected $casts = [
         'sent_at' => 'datetime',
         'delivered_at' => 'datetime',
+        'last_polled_at' => 'datetime',
         'raw_response' => 'array',
     ];
 
