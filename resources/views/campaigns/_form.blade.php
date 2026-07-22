@@ -22,19 +22,10 @@
         @error('client_id')<div class="invalid-feedback">{{ $message }}</div>@enderror
     </div>
 
-    {{-- Recipient source — always a real, selected list. No typed guesses; see Quotes for pre-sales estimates. --}}
-    <div class="col-12">
-        <label class="form-label">Recipients</label>
-        <select id="recipient-source" name="recipient_source" class="form-select">
-            <option value="">No recipients selected yet — add them after creating this campaign</option>
-        </select>
-        <small class="text-muted" id="recipient-source-hint">Pick a saved group or the client's whole active list — recipients are imported the moment you save. Costs are always calculated from actual recipients, never a typed guess.</small>
-    </div>
-
-    {{-- Campaign type --}}
-    <div class="col-12">
+    {{-- Campaign type first — it decides which content and pricing sections apply below. --}}
+    <div class="col-md-5">
         <label class="form-label">Campaign Type <span class="text-danger">*</span></label>
-        <div class="d-flex gap-3">
+        <div class="d-flex gap-3 mt-1">
             @foreach(['sms' => '<i class="bi bi-chat-dots"></i> SMS', 'email' => '<i class="bi bi-envelope"></i> Email', 'both' => '<i class="bi bi-layers"></i> Both'] as $val => $label)
             <div class="form-check">
                 <input class="form-check-input" type="radio" name="campaign_type" id="type_{{ $val }}"
@@ -45,10 +36,19 @@
         </div>
     </div>
 
-    {{-- SMS fields --}}
+    {{-- Recipient source — always a real, selected list. No typed guesses; see Quotes for pre-sales estimates. --}}
+    <div class="col-md-7">
+        <label class="form-label">Recipients</label>
+        <select id="recipient-source" name="recipient_source" class="form-select">
+            <option value="">No recipients selected yet — add them after creating this campaign</option>
+        </select>
+        <small class="text-muted" id="recipient-source-hint">Pick a saved group or the client's whole active list — imported the moment you save.</small>
+    </div>
+
+    {{-- SMS content --}}
     <div id="sms-fields" class="col-12">
         <div class="row g-3">
-            <div class="col-12">
+            <div class="col-md-8">
                 <label class="form-label">SMS Message <span class="text-danger sms-required">*</span></label>
                 <textarea name="message" id="message" class="form-control @error('message') is-invalid @enderror"
                     rows="5" placeholder="Type your SMS message here...">{{ old('message', $campaign->message ?? '') }}</textarea>
@@ -58,100 +58,143 @@
                 <label class="form-label">Sender Name <small class="text-muted">(max 11 chars)</small></label>
                 <input type="text" name="sender_name" class="form-control" maxlength="11"
                     value="{{ old('sender_name', $campaign->sender_name ?? '') }}">
-            </div>
-            <div class="col-md-4">
-                <label class="form-label">Internal Cost per SMS (R)</label>
-                <div class="input-group">
-                    <span class="input-group-text">R</span>
-                    <input type="number" name="internal_cost_per_sms" id="internal_cost_per_sms" step="0.0001" min="0"
-                        class="form-control" value="{{ old('internal_cost_per_sms', $campaign->internal_cost_per_sms ?? '0.1200') }}">
-                </div>
-            </div>
-            <div class="col-md-4">
-                <label class="form-label">Client Rate per SMS (R)</label>
-                <div class="input-group">
-                    <span class="input-group-text">R</span>
-                    <input type="number" name="client_rate_per_sms" id="client_rate_per_sms" step="0.0001" min="0"
-                        class="form-control" value="{{ old('client_rate_per_sms', $campaign->client_rate_per_sms ?? '0.2500') }}">
-                </div>
-            </div>
-            <div class="col-md-4">
-                <label class="form-label">SMS Recipients <small class="text-muted">(from selection above)</small></label>
-                <input type="number" name="estimated_recipients" id="estimated_recipients" min="0" readonly
-                    class="form-control" value="{{ old('estimated_recipients', $campaign->estimated_recipients ?? '0') }}"
-                    style="background:var(--surface-bg);">
+                <small class="text-muted">Must be registered with SMSPortal</small>
             </div>
         </div>
     </div>
 
-    {{-- Email fields --}}
+    {{-- Email content — subject + body up front; sender details tucked away since the defaults usually apply. --}}
     <div id="email-fields" class="col-12" style="display:none;">
-        <div class="row g-3">
-            <div class="col-12">
-                <div style="background:var(--surface-bg);border:1px solid var(--surface-border);border-radius:8px;padding:16px;">
-                    <p class="small fw-semibold mb-3" style="color:var(--text-secondary);"><i class="bi bi-envelope me-1"></i>Email Settings (Amazon SES)</p>
-                    <div class="row g-3">
-                        <div class="col-12">
-                            <label class="form-label">Email Subject <span class="text-danger email-required">*</span></label>
-                            <input type="text" name="email_subject" class="form-control"
-                                value="{{ old('email_subject', $campaign->email_subject ?? '') }}"
-                                placeholder="e.g. Exclusive offer for you">
-                        </div>
-                        <div class="col-md-4">
-                            <label class="form-label">From Name</label>
-                            <input type="text" name="email_from_name" class="form-control"
-                                value="{{ old('email_from_name', $campaign->email_from_name ?? '') }}"
-                                placeholder="e.g. Acme Marketing">
-                            <small class="text-muted">Leave blank to use settings default</small>
-                        </div>
-                        <div class="col-md-4">
-                            <label class="form-label">From Address (alias)</label>
-                            <div class="input-group input-group-sm" id="from-picker-group">
-                                <input type="text" id="email_from_local" class="form-control" placeholder="promos" autocomplete="off">
-                                <span class="input-group-text">@</span>
-                                <select id="email_from_domain" class="form-select"></select>
+        <div style="background:var(--surface-bg);border:1px solid var(--surface-border);border-radius:8px;padding:16px;">
+            <p class="small fw-semibold mb-3" style="color:var(--text-secondary);"><i class="bi bi-envelope me-1"></i>Email Content</p>
+            <div class="row g-3">
+                <div class="col-12">
+                    <label class="form-label">Email Subject <span class="text-danger email-required">*</span></label>
+                    <input type="text" name="email_subject" class="form-control"
+                        value="{{ old('email_subject', $campaign->email_subject ?? '') }}"
+                        placeholder="e.g. Exclusive offer for you">
+                </div>
+                <div class="col-12">
+                    <label class="form-label">Email Body (HTML) <span class="text-danger email-required">*</span></label>
+                    <textarea name="email_body" id="email_body" class="form-control" rows="8"
+                        placeholder="HTML email body. Use @{{name}} to personalise.">{{ old('email_body', $campaign->email_body ?? '') }}</textarea>
+                    <small class="text-muted">Supports HTML. Use <code>@{{name}}</code> and <code>@{{email}}</code> for personalisation.</small>
+                </div>
+                @php
+                    $hasCustomSender = old('email_from_name', $campaign->email_from_name ?? '')
+                        || old('email_from_address', $campaign->email_from_address ?? '')
+                        || old('email_reply_to', $campaign->email_reply_to ?? '');
+                @endphp
+                <div class="col-12">
+                    <details {{ $hasCustomSender ? 'open' : '' }}>
+                        <summary class="small fw-semibold" style="color:var(--text-secondary);cursor:pointer;">
+                            <i class="bi bi-person-badge me-1"></i>Sender settings — optional, uses your account default unless changed
+                        </summary>
+                        <div class="row g-3 mt-1">
+                            <div class="col-md-4">
+                                <label class="form-label">From Name</label>
+                                <input type="text" name="email_from_name" class="form-control"
+                                    value="{{ old('email_from_name', $campaign->email_from_name ?? '') }}"
+                                    placeholder="e.g. Acme Marketing">
                             </div>
-                            <input type="email" name="email_from_address" id="email_from_address" class="form-control"
-                                value="{{ old('email_from_address', $campaign->email_from_address ?? '') }}"
-                                placeholder="e.g. promos@yourdomain.com" style="display:none;">
-                            <small class="text-muted" id="email_from_hint">Pick a verified domain — keeps marketing sends looking friendly &amp; trusted.</small>
+                            <div class="col-md-4">
+                                <label class="form-label">From Address (alias)</label>
+                                <div class="input-group input-group-sm" id="from-picker-group">
+                                    <input type="text" id="email_from_local" class="form-control" placeholder="promos" autocomplete="off">
+                                    <span class="input-group-text">@</span>
+                                    <select id="email_from_domain" class="form-select"></select>
+                                </div>
+                                <input type="email" name="email_from_address" id="email_from_address" class="form-control"
+                                    value="{{ old('email_from_address', $campaign->email_from_address ?? '') }}"
+                                    placeholder="e.g. promos@yourdomain.com" style="display:none;">
+                                <small class="text-muted" id="email_from_hint">Pick a verified domain — keeps marketing sends looking friendly &amp; trusted.</small>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">Reply-To</label>
+                                <input type="email" name="email_reply_to" class="form-control"
+                                    value="{{ old('email_reply_to', $campaign->email_reply_to ?? '') }}"
+                                    placeholder="e.g. support@yourdomain.com">
+                            </div>
                         </div>
-                        <div class="col-md-4">
-                            <label class="form-label">Reply-To</label>
-                            <input type="email" name="email_reply_to" class="form-control"
-                                value="{{ old('email_reply_to', $campaign->email_reply_to ?? '') }}"
-                                placeholder="e.g. support@yourdomain.com">
+                    </details>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {{-- Pricing — one place for every money field, driven by packages or set manually. --}}
+    <div class="col-12">
+        <div style="background:var(--surface-bg);border:1px solid var(--surface-border);border-radius:8px;padding:16px;">
+            <p class="small fw-semibold mb-3" style="color:var(--text-secondary);"><i class="bi bi-cash-coin me-1"></i>Pricing</p>
+            <div class="row g-3">
+                <div class="col-md-6">
+                    <label class="form-label">Pricing Package</label>
+                    <select name="package_id" id="package_id" class="form-select">
+                        <option value="">Manual pricing — set rates yourself</option>
+                        @foreach($packages as $pkg)
+                            <option value="{{ $pkg->id }}"
+                                {{ (string) old('package_id', $campaign->package_id ?? '') === (string) $pkg->id ? 'selected' : '' }}>
+                                {{ $pkg->name }} — {{ strtoupper($pkg->channel) }} from {{ number_format($pkg->min_units) }} @ R{{ rtrim(rtrim(number_format($pkg->unit_price, 4), '0'), '.') }}
+                            </option>
+                        @endforeach
+                    </select>
+                    <small class="text-muted" id="package-hint">Selecting a package fills the client rate for you.</small>
+                </div>
+
+                <div class="col-md-6" id="sms-pricing">
+                    <div class="row g-3">
+                        <div class="col-6">
+                            <label class="form-label">Internal Cost / SMS</label>
+                            <div class="input-group">
+                                <span class="input-group-text">R</span>
+                                <input type="number" name="internal_cost_per_sms" id="internal_cost_per_sms" step="0.0001" min="0"
+                                    class="form-control" value="{{ old('internal_cost_per_sms', $campaign->internal_cost_per_sms ?? '0.1200') }}">
+                            </div>
                         </div>
-                        <div class="col-12">
-                            <label class="form-label">Email Body (HTML) <span class="text-danger email-required">*</span></label>
-                            <textarea name="email_body" id="email_body" class="form-control" rows="8"
-                                placeholder="HTML email body. Use @{{name}} to personalise.">{{ old('email_body', $campaign->email_body ?? '') }}</textarea>
-                            <small class="text-muted">Supports HTML. Use <code>@{{name}}</code> and <code>@{{email}}</code> for personalisation.</small>
+                        <div class="col-6">
+                            <label class="form-label">Client Rate / SMS</label>
+                            <div class="input-group">
+                                <span class="input-group-text">R</span>
+                                <input type="number" name="client_rate_per_sms" id="client_rate_per_sms" step="0.0001" min="0"
+                                    class="form-control" value="{{ old('client_rate_per_sms', $campaign->client_rate_per_sms ?? '0.2500') }}">
+                            </div>
                         </div>
                     </div>
                 </div>
-            </div>
-            <div class="col-md-4">
-                <label class="form-label">Internal Cost per Email (R)</label>
-                <div class="input-group">
-                    <span class="input-group-text">R</span>
-                    <input type="number" name="internal_cost_per_email" id="internal_cost_per_email" step="0.000001" min="0"
-                        class="form-control" value="{{ old('internal_cost_per_email', $campaign->internal_cost_per_email ?? \App\Services\EmailService::getCostPerEmail()) }}">
+
+                <div class="col-md-6" id="email-pricing" style="display:none;">
+                    <div class="row g-3">
+                        <div class="col-6">
+                            <label class="form-label">Internal Cost / Email</label>
+                            <div class="input-group">
+                                <span class="input-group-text">R</span>
+                                <input type="number" name="internal_cost_per_email" id="internal_cost_per_email" step="0.000001" min="0"
+                                    class="form-control" value="{{ old('internal_cost_per_email', $campaign->internal_cost_per_email ?? \App\Services\EmailService::getCostPerEmail()) }}">
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label">Client Rate / Email</label>
+                            <div class="input-group">
+                                <span class="input-group-text">R</span>
+                                <input type="number" name="client_rate_per_email" id="client_rate_per_email" step="0.000001" min="0"
+                                    class="form-control" value="{{ old('client_rate_per_email', $campaign->client_rate_per_email ?? \App\Services\EmailService::getClientRatePerEmail()) }}">
+                            </div>
+                        </div>
+                    </div>
                 </div>
-            </div>
-            <div class="col-md-4">
-                <label class="form-label">Client Rate per Email (R)</label>
-                <div class="input-group">
-                    <span class="input-group-text">R</span>
-                    <input type="number" name="client_rate_per_email" id="client_rate_per_email" step="0.000001" min="0"
-                        class="form-control" value="{{ old('client_rate_per_email', $campaign->client_rate_per_email ?? \App\Services\EmailService::getClientRatePerEmail()) }}">
+
+                <div class="col-md-3">
+                    <label class="form-label">SMS Recipients <small class="text-muted">(auto)</small></label>
+                    <input type="number" name="estimated_recipients" id="estimated_recipients" min="0" readonly
+                        class="form-control" value="{{ old('estimated_recipients', $campaign->estimated_recipients ?? '0') }}"
+                        style="background:var(--surface-card);">
                 </div>
-            </div>
-            <div class="col-md-4">
-                <label class="form-label">Email Recipients <small class="text-muted">(from selection above)</small></label>
-                <input type="number" name="estimated_email_recipients" id="estimated_email_recipients" min="0" readonly
-                    class="form-control" value="{{ old('estimated_email_recipients', $campaign->estimated_email_recipients ?? '0') }}"
-                    style="background:var(--surface-bg);">
+                <div class="col-md-3">
+                    <label class="form-label">Email Recipients <small class="text-muted">(auto)</small></label>
+                    <input type="number" name="estimated_email_recipients" id="estimated_email_recipients" min="0" readonly
+                        class="form-control" value="{{ old('estimated_email_recipients', $campaign->estimated_email_recipients ?? '0') }}"
+                        style="background:var(--surface-card);">
+                </div>
             </div>
         </div>
     </div>
@@ -202,15 +245,63 @@ function updateTypeVisibility() {
     const showSms   = type === 'sms'   || type === 'both';
     const showEmail = type === 'email' || type === 'both';
 
-    document.getElementById('sms-fields').style.display   = showSms   ? '' : 'none';
-    document.getElementById('email-fields').style.display = showEmail ? '' : 'none';
+    document.getElementById('sms-fields').style.display    = showSms   ? '' : 'none';
+    document.getElementById('email-fields').style.display  = showEmail ? '' : 'none';
+    document.getElementById('sms-pricing').style.display   = showSms   ? '' : 'none';
+    document.getElementById('email-pricing').style.display = showEmail ? '' : 'none';
 
     // Toggle required attributes
     const msgEl = document.getElementById('message');
     if (msgEl) msgEl.required = showSms;
 
     if (typeof updateEstimator === 'function') updateEstimator();
+    if (typeof updatePackageHint === 'function') updatePackageHint();
 }
+
+// ── Pricing packages ─────────────────────────────────────────────────
+// (json_encode, not the @ directive — Blade's json directive breaks on 4+ key arrays.)
+const PACKAGES = {!! json_encode($packages->map(fn($p) => ['id' => $p->id, 'channel' => $p->channel, 'min_units' => $p->min_units, 'unit_price' => (float) $p->unit_price, 'name' => $p->name])) !!};
+
+function applyPackage() {
+    const select = document.getElementById('package_id');
+    if (!select) return;
+    const pkg = PACKAGES.find(p => String(p.id) === select.value);
+    if (!pkg) { updatePackageHint(); return; }
+
+    if (pkg.channel === 'sms') {
+        const el = document.getElementById('client_rate_per_sms');
+        if (el) el.value = pkg.unit_price.toFixed(4);
+    } else {
+        const el = document.getElementById('client_rate_per_email');
+        if (el) el.value = pkg.unit_price.toFixed(6);
+    }
+    updatePackageHint();
+    if (typeof updateEstimator === 'function') updateEstimator();
+}
+
+function updatePackageHint() {
+    const hint = document.getElementById('package-hint');
+    if (!hint) return;
+    const type = document.querySelector('input[name="campaign_type"]:checked')?.value || 'sms';
+    const channel = type === 'email' ? 'email' : 'sms';
+    const recipients = parseInt(document.getElementById(channel === 'sms' ? 'estimated_recipients' : 'estimated_email_recipients')?.value || 0);
+    const segments = channel === 'sms' ? parseInt(document.getElementById('segment-count')?.textContent || 1) : 1;
+    const volume = recipients * segments;
+
+    const best = PACKAGES
+        .filter(p => p.channel === channel && p.min_units <= volume)
+        .sort((a, b) => b.min_units - a.min_units)[0];
+
+    if (volume > 0 && best) {
+        hint.innerHTML = 'Best tier for ' + volume.toLocaleString() + ' messages: <strong>' + best.name + '</strong> @ R' + best.unit_price;
+    } else if (volume > 0) {
+        hint.textContent = volume.toLocaleString() + ' messages — below the smallest package tier, manual pricing applies.';
+    } else {
+        hint.textContent = 'Selecting a package fills the client rate for you.';
+    }
+}
+
+document.getElementById('package_id')?.addEventListener('change', applyPackage);
 
 document.querySelector('select[name="client_id"]')?.addEventListener('change', function() {
     const opt = this.options[this.selectedIndex];
@@ -284,6 +375,7 @@ function applyRecipientSourceCount() {
     if (estEmailField) estEmailField.value = count;
 
     if (typeof updateEstimator === 'function') updateEstimator();
+    if (typeof updatePackageHint === 'function') updatePackageHint();
 }
 
 document.getElementById('recipient-source')?.addEventListener('change', applyRecipientSourceCount);

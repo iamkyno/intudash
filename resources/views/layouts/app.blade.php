@@ -604,6 +604,9 @@
         <a href="{{ route('invoices.index') }}" class="sidebar-link {{ request()->routeIs('invoices.*') ? 'active' : '' }}">
             <i class="bi bi-receipt"></i> Invoices
         </a>
+        <a href="{{ route('packages.index') }}" class="sidebar-link {{ request()->routeIs('packages.*') ? 'active' : '' }}">
+            <i class="bi bi-box-seam"></i> Packages
+        </a>
 
         <div class="nav-section-label">System</div>
         <a href="{{ route('settings.index') }}" class="sidebar-link {{ request()->routeIs('settings.*') ? 'active' : '' }}">

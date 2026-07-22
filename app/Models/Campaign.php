@@ -20,7 +20,7 @@ class Campaign extends Model
         'provider_response', 'provider', 'provider_campaign_id', 'admin_override_payment',
         'is_recurring_schedule', 'archived_at', 'campaign_group_id', 'campaign_group_run',
         'email_subject', 'email_from_name', 'email_from_address', 'email_reply_to', 'email_body',
-        'internal_cost_per_email', 'client_rate_per_email',
+        'internal_cost_per_email', 'client_rate_per_email', 'package_id',
         'estimated_email_recipients', 'actual_email_recipients',
     ];
 
@@ -46,6 +46,11 @@ class Campaign extends Model
     public function user()
     {
         return $this->belongsTo(User::class);
+    }
+
+    public function package()
+    {
+        return $this->belongsTo(Package::class);
     }
 
     public function recipients()

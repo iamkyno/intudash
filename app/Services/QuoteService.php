@@ -73,9 +73,12 @@ class QuoteService
                 : $campaign->validRecipients()->count();
             $runLabel = $runs > 1 ? " × {$runs} runs" : '';
             $segLabel = $campaign->sms_segments > 1 ? ", {$campaign->sms_segments} segments/msg" : '';
+            $pkgLabel = $campaign->package && $campaign->package->channel === 'sms'
+                ? " | {$campaign->package->name} package"
+                : '';
             QuoteItem::create([
                 'quote_id'    => $quote->id,
-                'description' => "Bulk SMS — {$campaign->name}{$runLabel} | " . number_format($smsRecipients) . " recipients{$segLabel}",
+                'description' => "Bulk SMS — {$campaign->name}{$runLabel} | " . number_format($smsRecipients) . " recipients{$segLabel}{$pkgLabel}",
                 'quantity'    => $smsQty,
                 'unit_price'  => $smsRate,
                 'total'       => $smsSubtotal,
