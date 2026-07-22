@@ -31,7 +31,7 @@ class SendCampaignJob implements ShouldQueue
             'type'        => $this->campaign->campaign_type,
         ]);
 
-        if (!$this->campaign->canBeScheduled()) {
+        if ($this->campaign->status !== 'sending') {
             Log::warning('Campaign not ready to send', ['campaign_id' => $this->campaign->id]);
             return;
         }

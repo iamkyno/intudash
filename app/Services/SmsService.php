@@ -47,7 +47,9 @@ class SmsService
         );
 
         $messageId = null;
-        if (!empty($result['results'][0]['messageId'])) {
+        if (!empty($result['results'][0]['id'])) {
+            $messageId = $result['results'][0]['id'];
+        } elseif (!empty($result['results'][0]['messageId'])) {
             $messageId = $result['results'][0]['messageId'];
         }
 
@@ -133,7 +135,7 @@ class SmsService
                 'message' => $campaign->message,
                 'sms_segments' => $campaign->sms_segments,
                 'provider' => 'smsportal',
-                'provider_message_id' => $messageResult['messageId'] ?? null,
+                'provider_message_id' => $messageResult['id'] ?? $messageResult['messageId'] ?? null,
                 'provider_event_id' => $eventId,
                 'status' => 'submitted',
                 'sent_at' => now(),
@@ -158,11 +160,16 @@ class SmsService
 
     public function processDeliveryReceipt(array $payload): void
     {
-        $messageId = $payload['messageId'] ?? $payload['MessageId'] ?? null;
-        $statusCode = $payload['statusCode'] ?? $payload['StatusCode'] ?? null;
+        $messageId = $payload['id'] ?? $payload['messageId'] ?? $payload['MessageId'] ?? null;
+        $statusCode = $payload['status'] ?? $payload['statusCode'] ?? $payload['StatusCode'] ?? null;
 
         if (!$messageId) {
             Log::warning('SMSPortal webhook missing messageId', $payload);
+            return;
+        }
+
+        if (!$statusCode) {
+            Log::warning('SMSPortal webhook missing status', $payload);
             return;
         }
 
