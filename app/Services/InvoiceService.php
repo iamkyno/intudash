@@ -82,7 +82,7 @@ class InvoiceService
             $runLabel = $runs > 1 ? " × {$runs} runs" : '';
             InvoiceItem::create([
                 'invoice_id'  => $invoice->id,
-                'description' => "Email Campaign (SES) — {$campaign->name}{$runLabel} | " . number_format($emailRecipients) . " recipients",
+                'description' => "Email Campaign — {$campaign->name}{$runLabel} | " . number_format($emailRecipients) . " recipients",
                 'quantity'    => $emailQty,
                 'unit_price'  => $emailRate,
                 'total'       => $emailSubtotal,

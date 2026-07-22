@@ -58,7 +58,7 @@
 
     <div id="rt-email" class="col-12">
         <div style="background:var(--surface-bg);border:1px solid var(--surface-border);border-radius:8px;padding:16px;">
-            <p class="small fw-semibold mb-3" style="color:var(--text-secondary);"><i class="bi bi-envelope me-1"></i>Email (Amazon SES)</p>
+            <p class="small fw-semibold mb-3" style="color:var(--text-secondary);"><i class="bi bi-envelope me-1"></i>Email</p>
             <div class="row g-3">
                 <div class="col-12">
                     <label class="form-label">Subject</label>
@@ -130,7 +130,7 @@ function showPlainFromInput(prefill) {
     group.style.display = 'none';
     plain.style.display = '';
     if (prefill !== undefined) plain.value = prefill;
-    if (hint) hint.innerHTML = 'No verified domains match this client yet. <a href="{{ route('settings.sending-domains.index') }}" target="_blank">Verify one</a>, or type any SES-verified address manually.';
+    if (hint) hint.innerHTML = 'No verified domains match this client yet. <a href="{{ route('settings.sending-domains.index') }}" target="_blank">Verify one</a>, or type any verified sender address manually.';
 }
 
 function rebuildFromDomainPicker(clientId) {

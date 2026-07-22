@@ -14,7 +14,7 @@
                 ['scheduled',          'badge-brand',   'Scheduled',           'Campaign is queued and will start sending at the scheduled date/time.'],
                 ['sending',            'badge-info',    'Sending',             'Campaign is actively dispatching SMS messages via the queue.'],
                 ['paused',             'badge-warning',  'Paused',              'Sending was paused manually. Resume to continue or Stop to cancel.'],
-                ['completed',          'badge-success',  'Completed',           'All messages sent and final delivery receipts received from SMSPortal.'],
+                ['completed',          'badge-success',  'Completed',           'All messages sent and final delivery receipts received from the gateway.'],
                 ['partially_completed','badge-warning',  'Partially Completed', 'Some messages were delivered, others failed. Check the delivery report.'],
                 ['failed',             'badge-danger',  'Failed',              'All messages failed to send. Check provider logs and retry if needed.'],
                 ['cancelled',          'badge-neutral', 'Cancelled',           'Campaign was manually stopped and will not send.'],

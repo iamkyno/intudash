@@ -48,7 +48,7 @@ class SendingDomainController extends Controller
             $svc->beginVerification($domain);
             $message = 'Domain added — add the DNS records below, then click "Recheck Status" once they propagate.';
         } catch (\Throwable $e) {
-            $message = 'Domain saved, but SES rejected the verification request: ' . $e->getMessage();
+            $message = 'Domain saved, but the email gateway rejected the verification request: ' . $e->getMessage();
         }
 
         $redirect = $client

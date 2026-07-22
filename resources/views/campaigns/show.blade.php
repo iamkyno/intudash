@@ -303,7 +303,7 @@ $siblings = \App\Models\Campaign::where('campaign_group_id', $campaign->campaign
                         </button>
                     </form>
                     <p class="small mb-0" style="color:var(--text-tertiary);">
-                        Some messages haven't confirmed delivery yet. This queries SMSPortal directly instead of waiting for their webhook.
+                        Some messages haven't confirmed delivery yet. This queries the SMS gateway directly instead of waiting for its webhook.
                     </p>
                 @endif
 
@@ -345,25 +345,21 @@ $siblings = \App\Models\Campaign::where('campaign_group_id', $campaign->campaign
             </div>
         </div>
 
-        {{-- Provider --}}
+        {{-- Delivery --}}
         <div class="card">
             <div class="card-header">
-                <span class="card-header-title"><i class="bi bi-plug"></i> Provider</span>
+                <span class="card-header-title"><i class="bi bi-plug"></i> Delivery</span>
             </div>
             <div class="card-body">
-                <div class="d-flex justify-content-between" style="font-size:13px;">
-                    <span style="color:var(--text-secondary);">Provider</span>
-                    <span class="badge badge-neutral text-uppercase">{{ $campaign->provider }}</span>
-                </div>
-                @if(config('services.smsportal.test_mode'))
-                    <div class="d-flex justify-content-between mt-2" style="font-size:13px;">
+                @if(\App\Models\AppSetting::get('smsportal_test_mode', '1') == '1')
+                    <div class="d-flex justify-content-between" style="font-size:13px;">
                         <span style="color:var(--text-secondary);">Mode</span>
                         <span class="badge badge-warning">Test</span>
                     </div>
                 @endif
                 @if($campaign->provider_campaign_id)
                     <div class="d-flex justify-content-between mt-2" style="font-size:13px;">
-                        <span style="color:var(--text-secondary);">Event ID</span>
+                        <span style="color:var(--text-secondary);">Reference</span>
                         <code>{{ $campaign->provider_campaign_id }}</code>
                     </div>
                 @endif

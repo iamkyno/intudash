@@ -79,7 +79,7 @@
                             <div class="input-group">
                                 <span class="input-group-text">R</span>
                                 <input type="number" name="default_internal_cost" step="0.0001" min="0" class="form-control"
-                                    value="{{ $settings['default_internal_cost'] ?? '0.1200' }}">
+                                    value="{{ $settings['default_internal_cost'] ?? config('pricing.sms.internal_cost') }}">
                             </div>
                         </div>
                         <div class="col-md-6">
@@ -87,7 +87,7 @@
                             <div class="input-group">
                                 <span class="input-group-text">R</span>
                                 <input type="number" name="default_client_rate" step="0.0001" min="0" class="form-control"
-                                    value="{{ $settings['default_client_rate'] ?? '0.2500' }}">
+                                    value="{{ $settings['default_client_rate'] ?? config('pricing.sms.client_rate') }}">
                             </div>
                         </div>
                         <div class="col-md-4">
@@ -100,7 +100,7 @@
             </div>
 
             <div class="card mb-3">
-                <div class="card-header"><i class="bi bi-envelope-at me-2"></i>Amazon SES (Email) Settings</div>
+                <div class="card-header"><i class="bi bi-envelope-at me-2"></i>Email Gateway Settings</div>
                 <div class="card-body">
                     <div class="alert alert-light border d-flex justify-content-between align-items-center py-2 px-3 mb-3">
                         <span class="small mb-0">
@@ -113,17 +113,17 @@
                     </div>
                     <div class="row g-3">
                         <div class="col-md-6">
-                            <label class="form-label">AWS Access Key</label>
+                            <label class="form-label">Access Key</label>
                             <input type="password" name="aws_key" class="form-control" autocomplete="off"
-                                value="" placeholder="{{ !empty($settings['aws_key_set']) ? '•••••••• configured — leave blank to keep' : 'AKIA…' }}">
+                                value="" placeholder="{{ !empty($settings['aws_key_set']) ? '•••••••• configured — leave blank to keep' : 'Access key' }}">
                         </div>
                         <div class="col-md-6">
-                            <label class="form-label">AWS Secret Key</label>
+                            <label class="form-label">Secret Key</label>
                             <input type="password" name="aws_secret" class="form-control" autocomplete="off"
                                 value="" placeholder="{{ !empty($settings['aws_secret_set']) ? '•••••••• configured — leave blank to keep' : 'Enter secret key' }}">
                         </div>
                         <div class="col-md-4">
-                            <label class="form-label">AWS Region</label>
+                            <label class="form-label">Region</label>
                             <select name="aws_region" class="form-select">
                                 @foreach(['us-east-1','us-west-2','eu-west-1','eu-central-1','ap-southeast-1','ap-southeast-2','sa-east-1'] as $r)
                                     <option value="{{ $r }}" {{ ($settings['aws_region'] ?? 'us-east-1') === $r ? 'selected' : '' }}>{{ $r }}</option>
@@ -134,7 +134,7 @@
                             <label class="form-label">Default From Email</label>
                             <input type="email" name="ses_from_email" class="form-control"
                                 value="{{ $settings['ses_from_email'] ?? '' }}" placeholder="noreply@yourdomain.com">
-                            <small class="text-muted">Must be verified in SES</small>
+                            <small class="text-muted">Must be a verified sender</small>
                         </div>
                         <div class="col-md-4">
                             <label class="form-label">Default From Name</label>
@@ -146,16 +146,16 @@
                             <div class="input-group">
                                 <span class="input-group-text">R</span>
                                 <input type="number" name="internal_cost_per_email" step="0.000001" min="0" class="form-control"
-                                    value="{{ $settings['internal_cost_per_email'] ?? '0.000100' }}">
+                                    value="{{ $settings['internal_cost_per_email'] ?? config('pricing.email.internal_cost') }}">
                             </div>
-                            <small class="text-muted">AWS SES charges ~$0.10 per 1,000 emails. Update this to reflect your ZAR equivalent.</small>
+                            <small class="text-muted">Your true cost to send one email (ZAR). Used for profit calculations.</small>
                         </div>
                         <div class="col-md-6">
                             <label class="form-label">Default Client Rate per Email (R)</label>
                             <div class="input-group">
                                 <span class="input-group-text">R</span>
                                 <input type="number" name="default_client_rate_per_email" step="0.000001" min="0" class="form-control"
-                                    value="{{ $settings['default_client_rate_per_email'] ?? '0.000300' }}">
+                                    value="{{ $settings['default_client_rate_per_email'] ?? config('pricing.email.client_rate') }}">
                             </div>
                         </div>
                     </div>
@@ -163,17 +163,17 @@
             </div>
 
             <div class="card mb-3">
-                <div class="card-header"><i class="bi bi-phone me-2"></i>SMSPortal API Settings</div>
+                <div class="card-header"><i class="bi bi-phone me-2"></i>SMS Gateway Settings</div>
                 <div class="card-body">
                     <div class="row g-3">
                         <div class="col-md-6">
-                            <label class="form-label">SMSPortal Client ID</label>
+                            <label class="form-label">Client ID</label>
                             <input type="text" name="smsportal_client_id" class="form-control"
                                 value="{{ $settings['smsportal_client_id'] ?? '' }}"
-                                placeholder="Your SMSPortal Client ID">
+                                placeholder="Your gateway client ID">
                         </div>
                         <div class="col-md-6">
-                            <label class="form-label">SMSPortal API Secret</label>
+                            <label class="form-label">API Secret</label>
                             <input type="password" name="smsportal_api_secret" class="form-control" autocomplete="off"
                                 value=""
                                 placeholder="{{ !empty($settings['smsportal_api_secret_set']) ? '•••••••• configured — leave blank to keep' : 'Enter to update' }}">
@@ -208,7 +208,7 @@
         <div class="card">
             <div class="card-header"><i class="bi bi-link-45deg me-2"></i>Webhook URLs</div>
             <div class="card-body">
-                <p class="small text-muted mb-1">SMSPortal delivery receipts:</p>
+                <p class="small text-muted mb-1">SMS delivery receipts:</p>
                 <div class="input-group mb-2">
                     <input type="text" class="form-control form-control-sm" readonly
                         value="{{ route('webhooks.smsportal') }}" id="webhookUrl">
@@ -216,7 +216,15 @@
                         <i class="bi bi-clipboard"></i>
                     </button>
                 </div>
-                <p class="small text-muted mb-1">Amazon SES (via SNS) bounce/complaint/delivery:</p>
+                <p class="small text-muted mb-1">SMS replies (STOP / opt-outs):</p>
+                <div class="input-group mb-2">
+                    <input type="text" class="form-control form-control-sm" readonly
+                        value="{{ route('webhooks.sms-reply') }}" id="replyWebhookUrl">
+                    <button type="button" class="btn btn-outline-secondary btn-sm" onclick="navigator.clipboard.writeText(document.getElementById('replyWebhookUrl').value)">
+                        <i class="bi bi-clipboard"></i>
+                    </button>
+                </div>
+                <p class="small text-muted mb-1">Email delivery / bounce / complaint:</p>
                 <div class="input-group">
                     <input type="text" class="form-control form-control-sm" readonly
                         value="{{ route('webhooks.ses') }}" id="sesWebhookUrl">
@@ -226,17 +234,7 @@
                 </div>
                 <small class="text-muted d-block mt-1">Append <code>?secret=YOUR_SECRET</code> if a webhook secret is set.</small>
                 <hr>
-                <p class="small text-muted mb-1"><i class="bi bi-info-circle me-1"></i>SMSPortal Delivery Status Codes:</p>
-                <ul class="small mb-0">
-                    <li><code>DELIVRD</code> — Delivered</li>
-                    <li><code>UNDELIV</code> — Undelivered</li>
-                    <li><code>EXPIRED</code> — Expired</li>
-                    <li><code>BLIST</code> — Blacklisted</li>
-                    <li><code>SUBMITD</code> — Submitted</li>
-                    <li><code>STAGED</code> — Staged</li>
-                    <li><code>CANCELLED</code> — Cancelled</li>
-                    <li><code>NOROUTE</code> — No Route</li>
-                </ul>
+                <p class="small text-muted mb-0"><i class="bi bi-info-circle me-1"></i>Register these URLs in your SMS and email gateway dashboards so delivery status, replies, and bounces flow back automatically.</p>
             </div>
         </div>
     </div>

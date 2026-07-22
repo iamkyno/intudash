@@ -6,6 +6,7 @@ use App\Http\Controllers\ClientDataSourceController;
 use App\Http\Controllers\ClientRecipientController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\InvoiceController;
+use App\Http\Controllers\OptOutController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\QuoteController;
 use App\Http\Controllers\RecipientController;
@@ -21,10 +22,18 @@ require __DIR__ . '/auth.php';
 
 // Webhooks — no session auth; protected by shared secret + rate limiting.
 Route::middleware('throttle:webhooks')->group(function () {
-    Route::post('webhooks/smsportal', [WebhookController::class, 'smsportal'])
+    // Neutral, provider-agnostic paths (shown in Settings).
+    Route::post('webhooks/sms-status', [WebhookController::class, 'smsportal'])
         ->name('webhooks.smsportal');
-    Route::post('webhooks/ses', [WebhookController::class, 'ses'])
+    Route::post('webhooks/sms-reply', [WebhookController::class, 'smsReply'])
+        ->name('webhooks.sms-reply');
+    Route::post('webhooks/email-status', [WebhookController::class, 'ses'])
         ->name('webhooks.ses');
+
+    // Legacy provider-named paths kept working so anything already configured
+    // in a provider dashboard doesn't break.
+    Route::post('webhooks/smsportal', [WebhookController::class, 'smsportal']);
+    Route::post('webhooks/ses', [WebhookController::class, 'ses']);
 });
 
 Route::get('/', function () {
@@ -81,6 +90,11 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('/quotes/{quote}/decline', [QuoteController::class, 'decline'])->name('quotes.decline');
     Route::patch('/quotes/{quote}/status', [QuoteController::class, 'updateStatus'])->name('quotes.update-status');
     Route::get('/quotes/{quote}/pdf', [QuoteController::class, 'pdf'])->name('quotes.pdf');
+
+    // Opt-outs / do-not-contact
+    Route::get('opt-outs', [OptOutController::class, 'index'])->name('opt-outs.index');
+    Route::post('opt-outs', [OptOutController::class, 'store'])->name('opt-outs.store');
+    Route::delete('opt-outs/{optOut}', [OptOutController::class, 'destroy'])->name('opt-outs.destroy');
 
     // Reminder templates
     Route::resource('reminder-templates', ReminderTemplateController::class)->except(['show']);

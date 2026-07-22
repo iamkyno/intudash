@@ -588,6 +588,9 @@
         <a href="{{ route('campaigns.create') }}" class="sidebar-link {{ request()->routeIs('campaigns.create') ? 'active' : '' }}">
             <i class="bi bi-plus-circle"></i> New Campaign
         </a>
+        <a href="{{ route('opt-outs.index') }}" class="sidebar-link {{ request()->routeIs('opt-outs.*') ? 'active' : '' }}">
+            <i class="bi bi-slash-circle"></i> Opt-Outs
+        </a>
 
         <div class="nav-section-label">Reminders</div>
         <a href="{{ route('reminders.index') }}" class="sidebar-link {{ request()->routeIs('reminders.*') ? 'active' : '' }}">
@@ -637,7 +640,7 @@
         </button>
         <span class="topbar-title">@yield('page-title', 'Dashboard')</span>
         <div class="topbar-spacer"></div>
-        @if(config('services.smsportal.test_mode'))
+        @if(\App\Models\AppSetting::get('smsportal_test_mode', '1') == '1')
             <span class="topbar-pill"><i class="bi bi-flask"></i> Test Mode</span>
         @endif
         <div class="topbar-divider"></div>

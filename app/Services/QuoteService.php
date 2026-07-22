@@ -89,7 +89,7 @@ class QuoteService
             $runLabel = $runs > 1 ? " × {$runs} runs" : '';
             QuoteItem::create([
                 'quote_id'    => $quote->id,
-                'description' => "Email Campaign (SES) — {$campaign->name}{$runLabel} | " . number_format($emailRecipients) . " recipients",
+                'description' => "Email Campaign — {$campaign->name}{$runLabel} | " . number_format($emailRecipients) . " recipients",
                 'quantity'    => $emailQty,
                 'unit_price'  => $emailRate,
                 'total'       => $emailSubtotal,

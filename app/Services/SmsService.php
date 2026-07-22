@@ -37,7 +37,13 @@ class SmsService
     public function sendOne(string $phone, string $message, ?string $sender = null): array
     {
         if (!$this->credentialsConfigured()) {
-            return ['success' => false, 'message_id' => null, 'error' => 'SMSPortal credentials are not configured in Settings.'];
+            return ['success' => false, 'message_id' => null, 'error' => 'SMS gateway credentials are not configured in Settings.'];
+        }
+
+        // Respect opt-outs on transactional/reminder sends too.
+        $normalized = PhoneNormalizer::normalize($phone);
+        if (\App\Models\OptOut::isOptedOut($normalized)) {
+            return ['success' => false, 'message_id' => null, 'error' => 'Recipient has opted out.'];
         }
 
         $result = $this->provider->sendBulk(
@@ -63,12 +69,22 @@ class SmsService
     public function sendCampaign(Campaign $campaign): array
     {
         if (!$this->credentialsConfigured()) {
-            Log::error('SMSPortal credentials not configured', ['campaign_id' => $campaign->id]);
-            $this->markFailed($campaign, 'SMSPortal credentials are not configured in Settings.');
-            return ['success' => false, 'error' => 'SMSPortal credentials are not configured in Settings.'];
+            Log::error('SMS gateway credentials not configured', ['campaign_id' => $campaign->id]);
+            $this->markFailed($campaign, 'SMS gateway credentials are not configured in Settings.');
+            return ['success' => false, 'error' => 'SMS gateway credentials are not configured in Settings.'];
         }
 
         $recipients = $campaign->validRecipients()->get();
+
+        // Never message a number that has opted out (replied STOP). Applies globally.
+        $optedOut = \App\Models\OptOut::whereIn('phone_normalized', $recipients->pluck('phone_normalized')->filter())
+            ->pluck('phone_normalized')
+            ->flip();
+        if ($optedOut->isNotEmpty()) {
+            $skipped = $recipients->filter(fn ($r) => $optedOut->has($r->phone_normalized))->count();
+            $recipients = $recipients->reject(fn ($r) => $optedOut->has($r->phone_normalized))->values();
+            Log::info('Skipped opted-out recipients', ['campaign_id' => $campaign->id, 'skipped' => $skipped]);
+        }
 
         if ($recipients->isEmpty()) {
             $this->markFailed($campaign, 'No valid recipients');
@@ -226,7 +242,7 @@ class SmsService
     }
 
     /**
-     * Actively check SMSPortal's status API for any message still awaiting a
+     * Actively check the SMS gateway's status API for any message still awaiting a
      * delivery-receipt webhook — a fallback for when the webhook never arrives
      * (unreachable URL, secret mismatch, provider outage, etc). Runs the whole
      * queue of due messages; one failure never blocks the rest. Backs off

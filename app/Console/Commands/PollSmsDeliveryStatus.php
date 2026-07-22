@@ -8,7 +8,7 @@ use Illuminate\Console\Command;
 class PollSmsDeliveryStatus extends Command
 {
     protected $signature = 'sms:poll-deliveries';
-    protected $description = 'Actively check SMSPortal for delivery status on messages whose webhook receipt never arrived.';
+    protected $description = 'Actively check the SMS gateway for delivery status on messages whose webhook receipt never arrived.';
 
     public function handle(SmsService $smsService): void
     {

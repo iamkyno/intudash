@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\AppSetting;
 use App\Models\WebhookEvent;
 use App\Services\EmailService;
+use App\Services\OptOutService;
 use App\Services\SmsService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
@@ -62,6 +63,48 @@ class WebhookController extends Controller
         } catch (\Exception $e) {
             $event->update(['status' => 'failed', 'error' => $e->getMessage()]);
             Log::error('SMSPortal webhook error', ['error' => $e->getMessage()]);
+        }
+
+        return response()->json(['status' => 'ok']);
+    }
+
+    /**
+     * Inbound SMS replies from customers (STOP, etc). Records every reply and
+     * opts the number out everywhere when it's a stop-style keyword.
+     */
+    public function smsReply(Request $request, OptOutService $optOutService)
+    {
+        if (!$this->secretValid($request)) {
+            Log::warning('SMS reply webhook rejected: invalid secret', ['ip' => $request->ip()]);
+            return response()->json(['status' => 'unauthorized'], 401);
+        }
+
+        $payload = $request->all();
+
+        $event = WebhookEvent::create([
+            'provider' => 'sms',
+            'event_type' => 'inbound_reply',
+            'payload' => $payload,
+            'status' => 'received',
+        ]);
+
+        try {
+            // Tolerate a batch of replies or a single one, across common field names.
+            $replies = $payload['replies'] ?? $payload['Replies'] ?? [$payload];
+
+            foreach ($replies as $reply) {
+                $from = $reply['from'] ?? $reply['From'] ?? $reply['source'] ?? $reply['msisdn'] ?? '';
+                $body = $reply['content'] ?? $reply['message'] ?? $reply['body'] ?? $reply['text'] ?? null;
+
+                if ($from !== '') {
+                    $optOutService->handleInboundReply((string) $from, $body, $reply);
+                }
+            }
+
+            $event->update(['status' => 'processed', 'processed_at' => now()]);
+        } catch (\Exception $e) {
+            $event->update(['status' => 'failed', 'error' => $e->getMessage()]);
+            Log::error('SMS reply webhook error', ['error' => $e->getMessage()]);
         }
 
         return response()->json(['status' => 'ok']);

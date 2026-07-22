@@ -34,7 +34,7 @@
             <span class="input-group-text">R</span>
             <input type="number" name="default_sms_rate" step="0.0001" min="0"
                 class="form-control @error('default_sms_rate') is-invalid @enderror"
-                value="{{ old('default_sms_rate', $client->default_sms_rate ?? '0.2500') }}" required>
+                value="{{ old('default_sms_rate', $client->default_sms_rate ?? config('pricing.sms.client_rate')) }}" required>
         </div>
         @error('default_sms_rate')<div class="invalid-feedback">{{ $message }}</div>@enderror
     </div>

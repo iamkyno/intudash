@@ -41,7 +41,7 @@ class EmailService
      * If the "From" domain is tracked in Sending Domains but not yet verified,
      * return a clear guidance message so the send fails fast instead of getting
      * a raw SES "MessageRejected" error. Domains that aren't tracked at all
-     * (verified directly in the AWS console, outside this app) pass through
+     * (verified directly at the email gateway, outside this app) pass through
      * unchanged — this only guards domains added via Settings/Client → Sending Domains.
      */
     private function unverifiedDomainError(?int $clientId, string $fromAddress): ?string
@@ -58,7 +58,7 @@ class EmailService
             ->first();
 
         if ($tracked && !$tracked->isVerified()) {
-            return "Sending domain '{$domain}' is still pending SES verification. Finish adding its DNS records under Sending Domains before sending from it.";
+            return "Sending domain '{$domain}' is still pending verification. Finish adding its DNS records under Sending Domains before sending from it.";
         }
 
         return null;
@@ -68,7 +68,7 @@ class EmailService
     {
         if (!$this->credentialsConfigured()) {
             Log::error('SES credentials not configured', ['campaign_id' => $campaign->id]);
-            return ['success' => false, 'error' => 'Amazon SES credentials are not configured in Settings.', 'sent' => 0, 'failed' => 0, 'total' => 0];
+            return ['success' => false, 'error' => 'Email gateway credentials are not configured in Settings.', 'sent' => 0, 'failed' => 0, 'total' => 0];
         }
 
         $recipients = $campaign->validRecipients()
@@ -181,7 +181,7 @@ class EmailService
         ?int $clientId = null
     ): array {
         if (!$this->credentialsConfigured()) {
-            return ['success' => false, 'message_id' => null, 'error' => 'SES credentials not configured'];
+            return ['success' => false, 'message_id' => null, 'error' => 'Email gateway credentials not configured'];
         }
 
         $fromName    = $fromName ?: AppSetting::get('ses_from_name', 'IntuDash');
@@ -277,11 +277,11 @@ class EmailService
 
     public static function getCostPerEmail(): float
     {
-        return (float) AppSetting::get('internal_cost_per_email', '0.000100');
+        return (float) AppSetting::get('internal_cost_per_email', config('pricing.email.internal_cost'));
     }
 
     public static function getClientRatePerEmail(): float
     {
-        return (float) AppSetting::get('default_client_rate_per_email', '0.000300');
+        return (float) AppSetting::get('default_client_rate_per_email', config('pricing.email.client_rate'));
     }
 }
