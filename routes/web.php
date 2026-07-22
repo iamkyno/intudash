@@ -6,7 +6,6 @@ use App\Http\Controllers\ClientDataSourceController;
 use App\Http\Controllers\ClientRecipientController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\InvoiceController;
-use App\Http\Controllers\PackageController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\QuoteController;
 use App\Http\Controllers\RecipientController;
@@ -82,13 +81,6 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('/quotes/{quote}/decline', [QuoteController::class, 'decline'])->name('quotes.decline');
     Route::patch('/quotes/{quote}/status', [QuoteController::class, 'updateStatus'])->name('quotes.update-status');
     Route::get('/quotes/{quote}/pdf', [QuoteController::class, 'pdf'])->name('quotes.pdf');
-
-    // Pricing packages (volume tiers used at campaign creation and on quotes)
-    Route::get('packages', [PackageController::class, 'index'])->name('packages.index');
-    Route::post('packages', [PackageController::class, 'store'])->name('packages.store');
-    Route::post('packages/seed-defaults', [PackageController::class, 'seedDefaults'])->name('packages.seed-defaults');
-    Route::put('packages/{package}', [PackageController::class, 'update'])->name('packages.update');
-    Route::delete('packages/{package}', [PackageController::class, 'destroy'])->name('packages.destroy');
 
     // Reminder templates
     Route::resource('reminder-templates', ReminderTemplateController::class)->except(['show']);

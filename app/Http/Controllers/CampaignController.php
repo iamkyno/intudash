@@ -7,7 +7,6 @@ use Illuminate\Support\Str;
 use App\Models\Campaign;
 use App\Models\Client;
 use App\Models\ClientRecipient;
-use App\Models\Package;
 use App\Models\RecipientGroup;
 use App\Models\SendingDomain;
 use App\Services\AuditLogService;
@@ -47,8 +46,7 @@ class CampaignController extends Controller
         $sendingDomains = SendingDomain::verified()->orderBy('domain')->get();
         $recipientGroups = RecipientGroup::withCount(['recipients' => fn ($q) => $q->active()])->orderBy('name')->get();
         $clientRecipientCounts = ClientRecipient::active()->selectRaw('client_id, count(*) as c')->groupBy('client_id')->pluck('c', 'client_id');
-        $packages = Package::active()->orderBy('channel')->orderBy('min_units')->get();
-        return view('campaigns.create', compact('clients', 'sendingDomains', 'recipientGroups', 'clientRecipientCounts', 'packages'));
+        return view('campaigns.create', compact('clients', 'sendingDomains', 'recipientGroups', 'clientRecipientCounts'));
     }
 
     public function store(Request $request, CampaignRecipientImportService $importer)
@@ -76,7 +74,6 @@ class CampaignController extends Controller
             'repeat_count'               => 'nullable|integer|min:2|max:52',
             // '' = manual estimate (default), 'all' = client's whole active list, or a recipient_groups id.
             'recipient_source'           => 'nullable|string|max:32',
-            'package_id'                 => 'nullable|exists:packages,id',
         ]);
 
         if (in_array($type, ['sms', 'both']) && !empty($validated['message'])) {
@@ -209,8 +206,7 @@ class CampaignController extends Controller
         $sendingDomains = SendingDomain::verified()->orderBy('domain')->get();
         $recipientGroups = RecipientGroup::withCount(['recipients' => fn ($q) => $q->active()])->orderBy('name')->get();
         $clientRecipientCounts = ClientRecipient::active()->selectRaw('client_id, count(*) as c')->groupBy('client_id')->pluck('c', 'client_id');
-        $packages = Package::active()->orderBy('channel')->orderBy('min_units')->get();
-        return view('campaigns.edit', compact('campaign', 'clients', 'sendingDomains', 'recipientGroups', 'clientRecipientCounts', 'packages'));
+        return view('campaigns.edit', compact('campaign', 'clients', 'sendingDomains', 'recipientGroups', 'clientRecipientCounts'));
     }
 
     public function update(Request $request, Campaign $campaign, CampaignRecipientImportService $importer)
@@ -237,7 +233,6 @@ class CampaignController extends Controller
             'client_rate_per_email'      => 'nullable|numeric|min:0',
             'estimated_email_recipients' => 'nullable|integer|min:0',
             'recipient_source'           => 'nullable|string|max:32',
-            'package_id'                 => 'nullable|exists:packages,id',
         ]);
 
         if (in_array($type, ['sms', 'both']) && !empty($validated['message'])) {
