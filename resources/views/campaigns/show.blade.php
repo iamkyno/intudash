@@ -290,6 +290,23 @@ $siblings = \App\Models\Campaign::where('campaign_group_id', $campaign->campaign
                     </form>
                 @endif
 
+                @php
+                    $awaitingDelivery = in_array($campaign->status, ['sending', 'paused'])
+                        && in_array($campaign->campaign_type ?? 'sms', ['sms', 'both'])
+                        && $campaign->smsLogs()->whereIn('status', ['pending', 'submitted', 'staged'])->exists();
+                @endphp
+                @if($awaitingDelivery)
+                    <form action="{{ route('campaigns.check-delivery-status', $campaign) }}" method="POST">
+                        @csrf
+                        <button type="submit" class="btn btn-ghost btn-sm w-100">
+                            <i class="bi bi-arrow-repeat"></i> Check Status
+                        </button>
+                    </form>
+                    <p class="small mb-0" style="color:var(--text-tertiary);">
+                        Some messages haven't confirmed delivery yet. This queries SMSPortal directly instead of waiting for their webhook.
+                    </p>
+                @endif
+
                 @if(in_array($campaign->status, ['sending', 'paused', 'scheduled']))
                     <form action="{{ route('campaigns.cancel', $campaign) }}" method="POST">
                         @csrf

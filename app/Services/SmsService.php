@@ -228,8 +228,6 @@ class SmsService
      */
     public function pollPendingDeliveries(): array
     {
-        $stats = ['checked' => 0, 'resolved' => 0, 'gave_up' => 0, 'errors' => 0];
-
         $candidates = SmsLog::whereIn('status', ['pending', 'submitted', 'staged'])
             ->whereNotNull('provider_message_id')
             ->where('poll_attempts', '<', self::MAX_POLL_ATTEMPTS)
@@ -239,9 +237,42 @@ class SmsService
             ->get()
             ->filter(fn ($log) => $this->isDueForPoll($log));
 
+        return $this->checkLogsAndFinalize($candidates);
+    }
+
+    /**
+     * Manually triggered from a campaign's "Check Status" button — checks every
+     * still-unresolved message on this one campaign right now, ignoring the
+     * normal backoff schedule (a deliberate user action overrides the wait).
+     * Also finalizes the campaign's own status immediately afterwards.
+     */
+    public function checkCampaignDeliveryStatus(Campaign $campaign): array
+    {
+        $logs = $campaign->smsLogs()
+            ->whereIn('status', ['pending', 'submitted', 'staged'])
+            ->whereNotNull('provider_message_id')
+            ->get();
+
+        $stats = $this->checkLogsAndFinalize($logs);
+
+        // Nothing left to poll doesn't necessarily mean the campaign's own status
+        // is current — force a recheck either way so a stale campaign can't hide
+        // behind "there was nothing to check."
+        $this->updateCampaignStatus($campaign->fresh());
+
+        return $stats;
+    }
+
+    /**
+     * Shared core: check a batch of logs against the provider, one failure
+     * never blocks the rest, then finalize every affected campaign's status.
+     */
+    private function checkLogsAndFinalize($logs): array
+    {
+        $stats = ['checked' => 0, 'resolved' => 0, 'gave_up' => 0, 'errors' => 0];
         $affectedCampaignIds = [];
 
-        foreach ($candidates as $log) {
+        foreach ($logs as $log) {
             $stats['checked']++;
 
             try {

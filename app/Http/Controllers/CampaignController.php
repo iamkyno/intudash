@@ -12,6 +12,7 @@ use App\Models\SendingDomain;
 use App\Services\AuditLogService;
 use App\Services\CampaignRecipientImportService;
 use App\Services\SmsCounter;
+use App\Services\SmsService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -330,6 +331,24 @@ class CampaignController extends Controller
         $campaign->update(['status' => 'sending']);
         SendCampaignJob::dispatch($campaign);
         return redirect()->route('campaigns.show', $campaign)->with('success', 'Campaign resumed.');
+    }
+
+    public function checkDeliveryStatus(Campaign $campaign, SmsService $smsService)
+    {
+        abort_if(!in_array($campaign->status, ['sending', 'paused']), 403, 'Only an in-progress campaign can be checked.');
+
+        $stats = $smsService->checkCampaignDeliveryStatus($campaign);
+        $campaign->refresh();
+
+        if ($campaign->status !== 'sending' && $campaign->status !== 'paused') {
+            $message = "Delivery confirmed — campaign is now \"" . str_replace('_', ' ', $campaign->status) . "\".";
+        } elseif ($stats['checked'] === 0) {
+            $message = 'No messages were due for a status check yet — try again shortly.';
+        } else {
+            $message = "Checked {$stats['checked']} message(s): {$stats['resolved']} resolved" . ($stats['gave_up'] > 0 ? ", {$stats['gave_up']} gave up after repeated attempts" : '') . '. Still waiting on the rest.';
+        }
+
+        return redirect()->route('campaigns.show', $campaign)->with('success', $message);
     }
 
     public function report(Campaign $campaign)

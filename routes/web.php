@@ -51,6 +51,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('campaigns/{campaign}/cancel', [CampaignController::class, 'cancel'])->name('campaigns.cancel');
     Route::post('campaigns/{campaign}/pause', [CampaignController::class, 'pause'])->name('campaigns.pause');
     Route::post('campaigns/{campaign}/resume', [CampaignController::class, 'resume'])->name('campaigns.resume');
+    Route::post('campaigns/{campaign}/check-delivery-status', [CampaignController::class, 'checkDeliveryStatus'])->name('campaigns.check-delivery-status');
     Route::get('campaigns/{campaign}/report', [CampaignController::class, 'report'])->name('campaigns.report');
     Route::get('campaigns/{campaign}/export-report', [CampaignController::class, 'exportReport'])->name('campaigns.export-report');
 
